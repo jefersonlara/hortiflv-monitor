@@ -1,0 +1,1703 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HortiFácil FLV — Monitor de Preços</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F6F3EE;--card:#FDFCF9;--border:#E0DAD0;
+  --g1:#1A5C38;--g2:#22A05A;--g3:#E6F4ED;
+  --r1:#A3282A;--r3:#FDE8E8;--y1:#7C5208;--y3:#FEF3C7;
+  --t1:#1C1812;--t2:#4A4238;--t3:#9C9080;
+  --mono:'DM Mono',monospace;--serif:'Fraunces',Georgia,serif;--sans:'DM Sans',sans-serif;
+  --sh:0 1px 4px rgba(0,0,0,.07),0 2px 12px rgba(0,0,0,.04);
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--t1);font-size:14px;line-height:1.5}
+#ld{position:fixed;inset:0;background:var(--g1);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s}
+#ld.hide{opacity:0;pointer-events:none}
+.ld-logo{font-family:var(--serif);font-size:38px;color:#fff;font-weight:300}
+.ld-logo em{color:#6EE7A0;font-style:italic}
+.ld-bar{width:220px;height:3px;background:rgba(255,255,255,.15);border-radius:99px;margin-top:20px;overflow:hidden}
+.ld-fill{height:100%;background:#6EE7A0;border-radius:99px;animation:ldani 2.5s ease-out forwards}
+.ld-txt{color:rgba(255,255,255,.5);font-size:12px;margin-top:10px;letter-spacing:.04em}
+@keyframes ldani{0%{width:0}100%{width:100%}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hd{background:var(--g1);height:56px;display:flex;align-items:center;padding:0 clamp(12px,4vw,36px);gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.25)}
+.hd-logo{font-family:var(--serif);font-size:21px;color:#fff;font-weight:300;white-space:nowrap;flex-shrink:0}
+.hd-logo em{color:#6EE7A0;font-style:italic}
+.hd-nav{display:flex;gap:2px;flex:1;overflow-x:auto;scrollbar-width:none}
+.hd-nav::-webkit-scrollbar{display:none}
+.nb{background:none;border:none;color:rgba(255,255,255,.55);font-family:var(--sans);font-size:13px;padding:6px 11px;border-radius:6px;cursor:pointer;white-space:nowrap;transition:all .13s}
+.nb:hover{color:#fff;background:rgba(255,255,255,.09)}
+.nb.on{color:#fff;background:rgba(255,255,255,.17);font-weight:500}
+.hd-pill{display:flex;align-items:center;gap:5px;background:rgba(110,231,160,.12);border:1px solid rgba(110,231,160,.25);border-radius:99px;padding:4px 10px;flex-shrink:0}
+.hd-dot{width:6px;height:6px;border-radius:50%;background:#6EE7A0;animation:pulse 2s infinite;flex-shrink:0}
+.hd-pill span{font-size:11px;color:#6EE7A0;font-family:var(--mono);white-space:nowrap}
+.hd-btn{background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.18);color:#fff;font-family:var(--sans);font-size:12px;padding:5px 12px;border-radius:7px;cursor:pointer;display:flex;align-items:center;gap:5px;flex-shrink:0;transition:background .13s}
+.hd-btn:hover{background:rgba(255,255,255,.2)}
+.spinning{animation:spin .7s linear infinite;display:inline-block}
+.wrap{max-width:1340px;margin:0 auto;padding:clamp(14px,3vw,28px) clamp(12px,4vw,36px)}
+/* CARDS FONTE */
+.fonte-status{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:8px;margin-bottom:16px}
+.fs-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 13px;display:flex;align-items:center;gap:9px;box-shadow:var(--sh)}
+.fs-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.fs-dot.ok{background:#22A05A}.fs-dot.loading{background:#D97706;animation:pulse 1.5s infinite}.fs-dot.err{background:#A3282A}.fs-dot.ext{background:#9C9080}
+.fs-info{flex:1;min-width:0}
+.fs-name{font-size:11.5px;font-weight:500;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fs-dt{font-size:10.5px;color:var(--t3);font-family:var(--mono);margin-top:1px}
+/* FILTROS */
+.fbox{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px;box-shadow:var(--sh)}
+.f-row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.f-row+.f-row{margin-top:10px;padding-top:10px;border-top:1px solid #F0EDE8}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fl{font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.sel{appearance:none;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 28px 7px 10px;font-size:13px;font-family:var(--sans);color:var(--t2);cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%239C9080' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;min-width:130px}
+.sel:focus{outline:none;border-color:var(--g2)}
+.sinp{padding:7px 10px;border-radius:7px;border:1px solid var(--border);font-size:13px;font-family:var(--sans);outline:none;background:var(--bg);min-width:155px}
+.sinp:focus{border-color:var(--g2)}
+.fpills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:99px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid transparent;transition:all .13s;user-select:none}
+.pill .dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.pill.off{background:var(--bg)!important;border-color:var(--border)!important;color:var(--t3)!important;opacity:.55}
+.p-conab{background:#E6F4ED;border-color:#A7D9B8;color:var(--g1)}.p-conab .dot{background:var(--g1)}
+.p-ceagesp{background:#EEF4FF;border-color:#BFDBFE;color:#1E40AF}.p-ceagesp .dot{background:#3B82F6}
+.p-ceasaserra{background:#F3F0FF;border-color:#DDD6FE;color:#5B21B6}.p-ceasaserra .dot{background:#7C3AED}
+.p-ext{background:#FFF7ED;border-color:#FED7AA;color:#92400E}
+.btn-g{background:var(--g1);color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:13px;font-family:var(--sans);font-weight:500;cursor:pointer;display:flex;align-items:center;gap:5px;height:34px;transition:background .13s}
+.btn-g:hover{background:#134A2C}
+.btn-sec{background:none;color:var(--t3);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-size:12px;font-family:var(--sans);cursor:pointer;height:34px}
+.btn-sec:hover{background:var(--bg)}
+/* AVISO */
+.aviso{border-radius:8px;padding:9px 14px;font-size:12.5px;margin-bottom:14px;display:none;align-items:flex-start;gap:8px;line-height:1.5}
+.aviso.show{display:flex}
+.aviso.warn{background:var(--y3);border:1px solid #FCD34D;color:var(--y1)}
+.aviso.info{background:#EEF4FF;border:1px solid #BFDBFE;color:#1E40AF}
+/* MÉTRICAS */
+.mets{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:16px}
+.met{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;box-shadow:var(--sh);animation:up .3s ease both}
+.met-l{font-size:10px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.met-v{font-family:var(--serif);font-size:28px;font-weight:300;line-height:1;margin-bottom:5px}
+.met-s{font-size:11.5px;color:var(--t3)}
+.verde .met-v{color:var(--g1)}.rubi .met-v{color:var(--r1)}.terra .met-v{color:var(--y1)}
+/* LAYOUT */
+.g2{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
+@media(max-width:960px){.g2,.g3{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:var(--sh);overflow:hidden;animation:up .3s ease both}
+.ch{padding:16px 18px 0;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px}
+.ct{font-family:var(--serif);font-size:16px;font-weight:400}
+.cs{font-size:11.5px;color:var(--t3);margin-top:3px}
+.cb{padding:14px 18px 18px}
+/* TABELA */
+.twrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);padding:9px 13px;border-bottom:1px solid var(--border);background:#FAF8F5;white-space:nowrap;cursor:pointer;user-select:none}
+thead th.sort-a::after{content:' ↑'}thead th.sort-d::after{content:' ↓'}
+tbody td{padding:9px 13px;border-bottom:1px solid #F0EDE8;color:var(--t2);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#FAF8F5}
+.tf{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap}
+.tf.ceagesp,.tf.ceagesp_cap,.tf.ceagesp_sem{background:#EEF4FF;color:#1E40AF}
+.tf.conab{background:var(--g3);color:var(--g1)}
+.tf.ceasaserra{background:#F3F0FF;color:#5B21B6}
+.tp{font-family:var(--mono);font-weight:700}
+.bv{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11.5px;font-weight:700;font-family:var(--mono)}
+.bv.a{background:var(--r3);color:var(--r1)}.bv.b{background:var(--g3);color:var(--g1)}.bv.c{background:var(--y3);color:#92400E}
+.avg-row td{background:#F5F3EE;font-weight:600;border-top:1px solid #DDD8D0}
+.avg-row:hover td{background:#F0EDE6}
+/* DATA TAG */
+.dtag{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:5px;font-size:10.5px;font-family:var(--mono)}
+.dtag.ok{background:var(--g3);color:var(--g1)}.dtag.old{background:var(--y3);color:var(--y1)}.dtag.stale{background:var(--r3);color:var(--r1)}
+/* SPARKS */
+.sp-item{margin-bottom:12px}
+.sp-h{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px}
+.sp-n{font-weight:500}.sp-v{font-family:var(--mono);color:var(--t3)}
+.sp-tr{height:5px;background:#EDE9E1;border-radius:99px;overflow:hidden}
+.sp-f{height:100%;border-radius:99px;background:var(--g2);transition:width .6s ease}
+/* ALERTAS */
+.als{display:flex;flex-direction:column;gap:7px}
+.al{border-radius:8px;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.al.a{background:var(--r3);border-left:3px solid var(--r1)}.al.b{background:var(--g3);border-left:3px solid var(--g2)}.al.c{background:var(--y3);border-left:3px solid #D97706}
+.al-n{font-weight:500;font-size:13px}.al-d{font-size:11px;color:var(--t3);margin-top:2px}
+.al-p{font-family:var(--mono);font-weight:700;font-size:13px;white-space:nowrap}
+.al.a .al-p{color:var(--r1)}.al.b .al-p{color:var(--g1)}.al.c .al-p{color:#92400E}
+/* CALC */
+.cg{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:700px){.cg{grid-template-columns:1fr}}
+.ig{margin-bottom:12px}
+.il{display:flex;justify-content:space-between;font-size:12.5px;color:var(--t2);margin-bottom:4px}
+.il span{font-family:var(--mono);font-weight:700;color:var(--t1)}
+input[type=range]{width:100%;accent-color:var(--g2);cursor:pointer}
+.rb{border-radius:10px;padding:14px 16px;text-align:center;margin-bottom:14px}
+.rb.ok{background:var(--g3);border:1px solid #A7D9B8}.rb.ng{background:var(--r3);border:1px solid #F4AAAB}
+.rb-s{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.rb.ok .rb-s{color:var(--g1)}.rb.ng .rb-s{color:var(--r1)}
+.rb-p{font-family:var(--serif);font-size:28px;font-weight:400}
+.rb.ok .rb-p{color:var(--g1)}.rb.ng .rb-p{color:var(--r1)}
+.rl{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #F0EDE8;font-size:13px}
+.rl:last-child{border-bottom:none}.rl span:first-child{color:var(--t3)}.rl span:last-child{font-family:var(--mono);font-weight:600}
+/* CHAT IA */
+.cm{height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:2px 0;margin-bottom:12px;scrollbar-width:thin}
+.msg{max-width:88%;border-radius:12px;padding:9px 13px;font-size:13px;line-height:1.55}
+.msg.u{align-self:flex-end;background:var(--g1);color:#fff;border-radius:12px 12px 3px 12px}
+.msg.b{align-self:flex-start;background:#EDE9E1;color:var(--t1);border-radius:12px 12px 12px 3px}
+.msg.load{color:var(--t3);font-style:italic;animation:pulse 1.5s infinite}
+.csug{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.sq{background:var(--g3);border:1px solid #A7D9B8;border-radius:99px;padding:5px 12px;font-size:12px;color:var(--g1);cursor:pointer;font-family:var(--sans);font-weight:500}
+.sq:hover{background:#C8EDD8}
+.ci{display:flex;gap:7px}
+.cinp{flex:1;padding:9px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;font-family:var(--sans);outline:none;background:var(--bg)}
+.cinp:focus{border-color:var(--g2)}
+.csend{background:var(--g1);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:14px;cursor:pointer;transition:background .13s;font-family:var(--sans)}
+.csend:hover{background:#134A2C}.csend:disabled{background:var(--border);cursor:not-allowed}
+.sec{display:none}.sec.on{display:block}
+.fi{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--t3);margin-top:14px}
+.fd{width:6px;height:6px;border-radius:50%;background:var(--g2);display:inline-block}
+.rel-header{background:var(--g1);color:#fff;border-radius:8px;padding:16px 20px;margin-bottom:18px}
+.rel-header h2{font-family:var(--serif);font-size:20px;font-weight:300;margin-bottom:4px}
+.rel-header p{font-size:12px;opacity:.7}
+.rel-sec{margin-bottom:20px}
+.rel-sec h3{font-size:12px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.rel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-bottom:16px}
+.rel-card{background:var(--bg);border-radius:8px;padding:11px 14px;border-left:3px solid var(--g2)}
+.rel-card.warn{border-left-color:var(--r1)}.rel-card.info{border-left-color:#3B82F6}
+.rel-card .rc-n{font-size:11px;color:var(--t3);margin-bottom:3px}
+.rel-card .rc-v{font-family:var(--serif);font-size:17px;font-weight:300;color:var(--t1)}
+.rel-card .rc-s{font-size:11px;color:var(--t3);margin-top:2px}
+@media print{
+  .hd,.fbox,.fonte-status,.aviso,footer,.hd-btn{display:none!important}
+  .sec{display:none!important}
+  #s-relatorio{display:block!important}
+  body{background:#fff!important}
+  .card{box-shadow:none!important;border:1px solid #ccc!important}
+  .wrap{padding:8px!important}
+}
+footer{margin-top:40px;padding:16px clamp(12px,4vw,36px);border-top:1px solid var(--border);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:11.5px;color:var(--t3);background:var(--card)}
+</style>
+</head>
+<body>
+
+<div id="ld">
+  <div class="ld-logo">Horti<em>Fácil</em> <span style="font-size:13px;opacity:.4;vertical-align:middle">FLV</span></div>
+  <div class="ld-bar"><div class="ld-fill"></div></div>
+  <div class="ld-txt" id="ld-txt">Carregando dados...</div>
+</div>
+
+<header class="hd">
+  <div class="hd-logo">Horti<em>Fácil</em></div>
+  <nav class="hd-nav">
+    <button class="nb on" onclick="nav('painel',this)">Painel</button>
+    <button class="nb" onclick="nav('tabela',this)">Tabela FLV</button>
+    <button class="nb" onclick="nav('comparativo',this)">Comparativo</button>
+    <button class="nb" onclick="nav('alertas',this)">Alertas</button>
+    <button class="nb" onclick="nav('precif',this)">Precificação</button>
+    <button class="nb" onclick="nav('ia',this)">Análise IA</button>
+    <button class="nb" onclick="nav('relatorio',this)">📋 Relatório</button>
+  </nav>
+  <div class="hd-pill"><div class="hd-dot"></div><span id="badge">Carregando...</span></div>
+  <button class="hd-btn" id="hd-refresh" onclick="iniciarCarregamento(true)"><span id="ico">↺</span> Atualizar</button>
+</header>
+
+<div class="wrap">
+
+  <div class="aviso info show" id="av-info">
+    ℹ Dados buscados ao abrir e ao clicar <strong>Atualizar</strong>. Cache local de 5 dias. Se já atualizou hoje, o sistema usa o cache automaticamente.
+    <span id="cache-hist" style="margin-left:8px;font-family:var(--mono);font-size:11px;opacity:.8"></span>
+  </div>
+  <div class="aviso warn" id="av-warn">
+    ⚠ <span>Algumas fontes estão com dados desatualizados. Clique em <strong>Atualizar</strong> para buscar os preços mais recentes.</span>
+  </div>
+
+  <div class="fonte-status" id="fs-status"></div>
+
+  <!-- FILTROS -->
+  <div class="fbox">
+    <div class="f-row">
+      <div class="fg">
+        <span class="fl">Fontes ativas</span>
+        <div class="fpills">
+          <span class="pill p-conab"      data-src="conab"       onclick="toggleFonte(this)"><span class="dot"></span>CONAB</span>
+          <span class="pill p-ceagesp"    data-src="ceagesp"     onclick="toggleFonte(this)"><span class="dot"></span>CEAGESP Interior/SP</span>
+          <span class="pill p-ceagesp"    data-src="ceagesp_cap" onclick="toggleFonte(this)"><span class="dot"></span>CEASA/PR Londrina</span>
+          <span class="pill p-ceasaserra" data-src="ceasaserra"  onclick="toggleFonte(this)"><span class="dot"></span>Ceasa Serra/RS</span>
+          <span class="pill p-ceasaserra" data-src="ceasarn"     onclick="toggleFonte(this)"><span class="dot"></span>CEASA/RN Natal</span>
+          <span class="pill p-ceagesp"    data-src="ceasapr"     onclick="toggleFonte(this)"><span class="dot"></span>CEASA/PR Curitiba</span>
+        </div>
+      </div>
+    </div>
+    <div class="f-row">
+      <div class="fg"><span class="fl">Categoria</span>
+        <select class="sel" id="fcat" onchange="upd()">
+          <option value="*">Todas FLV</option>
+          <option value="fruta">🍎 Frutas</option>
+          <option value="legume">🥕 Legumes</option>
+          <option value="verdura">🥬 Verduras</option>
+        </select>
+      </div>
+      <div class="fg"><span class="fl">Produto</span>
+        <select class="sel" id="fp" onchange="upd()"><option value="*">Todos</option></select>
+      </div>
+      <div class="fg"><span class="fl">Estado origem</span>
+        <select class="sel" id="fe" onchange="upd()">
+          <option value="*">Todos</option>
+          <option>SP</option><option>RS</option><option>MG</option><option>SC</option>
+          <option>PR</option><option>GO</option><option>CE</option><option>BA</option>
+          <option>PE</option><option>RJ</option><option>MS</option><option>MT</option>
+          <option>RN</option><option>PA</option><option>ES</option>
+        </select>
+      </div>
+      <div class="fg"><span class="fl">Ordenar</span>
+        <select class="sel" id="ford" onchange="upd()">
+          <option value="prod">Produto A–Z</option>
+          <option value="pa">Menor preço</option>
+          <option value="pd">Maior preço</option>
+          <option value="va">Menor variação</option>
+          <option value="vd">Maior variação</option>
+          <option value="dt">Mais recente</option>
+        </select>
+      </div>
+      <div class="fg"><span class="fl">Busca rápida</span>
+        <input type="search" class="sinp" id="busca" placeholder="tomate, alface..." oninput="upd()">
+      </div>
+      <div style="display:flex;gap:6px;align-items:flex-end">
+        <button class="btn-g" onclick="aplicarFiltros()" style="background:var(--g1);min-width:90px">🔍 Filtrar</button>
+        <button class="btn-sec" onclick="limparFiltros()">Limpar</button>
+        <button class="btn-g" onclick="exportCSV()">↓ CSV</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAINEL -->
+  <div class="sec on" id="s-painel">
+    <div class="mets" id="mets"></div>
+    <div class="g2">
+      <div class="card">
+        <div class="ch">
+          <div><div class="ct">Evolução de preços</div><div class="cs" id="sub-ev">Preço médio semanal</div></div>
+          <select class="sel" id="fp2" onchange="renderEv()" style="font-size:12px;padding:5px 26px 5px 10px;min-width:0"></select>
+        </div>
+        <div class="cb"><div style="position:relative;height:200px"><canvas id="cEv"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="ch"><div><div class="ct">Alertas do dia</div><div class="cs">Variações relevantes</div></div></div>
+        <div class="cb"><div class="als" id="al-mini"></div></div>
+      </div>
+    </div>
+    <div class="g2">
+      <div class="card">
+        <div class="ch"><div><div class="ct">Preço por estado</div><div class="cs" id="sub-est">—</div></div></div>
+        <div class="cb"><div style="position:relative;height:150px"><canvas id="cEst"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="ch"><div><div class="ct">Ranking de preços</div><div class="cs">Relativo ao maior</div></div></div>
+        <div class="cb" id="sparks"></div>
+      </div>
+    </div>
+    <div class="fi"><span class="fd"></span>Fontes: CONAB/PROHORT · CEAGESP · Ceasa Serra/RS <span class="fd" style="background:var(--t3)"></span>Atualizado: <span id="dt-upd">—</span></div>
+  </div>
+
+  <!-- TABELA FLV -->
+  <div class="sec" id="s-tabela">
+    <div class="card" style="margin-bottom:14px">
+      <div class="ch"><div><div class="ct">Tabela de preços FLV</div><div class="cs" id="sub-tb">—</div></div></div>
+      <div class="cb" style="padding:0">
+        <div class="twrap">
+          <table id="tbl-main">
+            <thead><tr>
+              <th onclick="sortBy('p')">Produto</th>
+              <th onclick="sortBy('cat')">Cat.</th>
+              <th onclick="sortBy('f')">Fonte</th>
+              <th onclick="sortBy('u')">Estado</th>
+              <th onclick="sortBy('mi')">Mín R$</th>
+              <th onclick="sortBy('me')" class="sort-a">Médio R$</th>
+              <th onclick="sortBy('ma')">Máx R$</th>
+              <th onclick="sortBy('v')">Var. 7d</th>
+              <th>Unid.</th>
+              <th onclick="sortBy('dt')">Referência</th>
+            </tr></thead>
+            <tbody id="tb"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><div><div class="ct">Média consolidada por produto</div><div class="cs">Todas as fontes ativas</div></div></div>
+      <div class="cb" style="padding:0">
+        <div class="twrap">
+          <table>
+            <thead><tr>
+              <th>Produto</th><th>Categoria</th><th>Mín R$</th><th>Média R$</th><th>Máx R$</th><th>Amplitude</th><th>Fontes</th><th>Ref. mais antiga</th>
+            </tr></thead>
+            <tbody id="tb-avg"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPARATIVO -->
+  <div class="sec" id="s-comparativo">
+    <div class="card" style="margin-bottom:14px">
+      <div class="ch">
+        <div><div class="ct">Comparativo entre fontes</div><div class="cs">Mesmo produto em diferentes origens</div></div>
+        <select class="sel" id="fp-comp" onchange="renderComp()" style="font-size:12px;padding:5px 26px 5px 10px;min-width:0"></select>
+      </div>
+      <div class="cb"><div style="position:relative;height:240px"><canvas id="cComp"></canvas></div></div>
+    </div>
+    <div class="g2">
+      <div class="card"><div class="ch"><div><div class="ct">Dispersão de preços</div><div class="cs">Amplitude entre fontes</div></div></div><div class="cb" id="comp-disp"></div></div>
+      <div class="card"><div class="ch"><div><div class="ct">Melhor oportunidade de compra</div><div class="cs">Menor preço agora</div></div></div><div class="cb" id="comp-op"></div></div>
+    </div>
+  </div>
+
+  <!-- ALERTAS -->
+  <div class="sec" id="s-alertas">
+    <div class="g2" style="margin-bottom:14px">
+      <div class="card"><div class="ch"><div><div class="ct">Alta de preços ⚠</div><div class="cs">Acima de +5% na semana</div></div></div><div class="cb"><div class="als" id="al-alta"></div></div></div>
+      <div class="card"><div class="ch"><div><div class="ct">Queda de preços ✓</div><div class="cs">Abaixo de −3% na semana</div></div></div><div class="cb"><div class="als" id="al-baixa"></div></div></div>
+    </div>
+    <div class="card"><div class="ch"><div><div class="ct">Todos os alertas</div><div class="cs" id="sub-al">—</div></div></div><div class="cb"><div class="als" id="al-full"></div></div></div>
+  </div>
+
+  <!-- PRECIFICAÇÃO -->
+  <div class="sec" id="s-precif">
+    <div class="card">
+      <div class="ch">
+        <div><div class="ct">Calculadora de precificação FLV</div><div class="cs">Baseada em preços reais das fontes ativas</div></div>
+        <select class="sel" id="fp3" onchange="renderCalc()" style="font-size:12px;padding:5px 26px 5px 10px;min-width:0"></select>
+      </div>
+      <div class="cb">
+        <div class="cg">
+          <div>
+            <div style="font-size:13px;font-weight:500;color:var(--t2);margin-bottom:14px">Parâmetros de compra</div>
+            <div class="ig"><div class="il">Preço de compra (R$/un) <span id="vC">2,80</span></div><input type="range" id="sC" min="0.1" max="50" step="0.1" value="2.8" oninput="renderCalc()"></div>
+            <div class="ig"><div class="il">Quantidade comprada <span id="vQ">50 un</span></div><input type="range" id="sQ" min="10" max="2000" step="10" value="50" oninput="renderCalc()"></div>
+            <div class="ig"><div class="il">Frete/transporte (R$) <span id="vT">60</span></div><input type="range" id="sT" min="0" max="800" step="10" value="60" oninput="renderCalc()"></div>
+            <div class="ig"><div class="il">Custo fixo rateado (R$) <span id="vF">30</span></div><input type="range" id="sF" min="0" max="300" step="5" value="30" oninput="renderCalc()"></div>
+            <div class="ig"><div class="il">Perdas/descarte <span id="vP">8%</span></div><input type="range" id="sP" min="1" max="50" step="1" value="8" oninput="renderCalc()"></div>
+            <div class="ig"><div class="il">Margem desejada <span id="vM">35%</span></div><input type="range" id="sM" min="5" max="80" step="1" value="35" oninput="renderCalc()"></div>
+            <div class="ig"><div class="il">Impostos/taxas <span id="vI">6%</span></div><input type="range" id="sI" min="0" max="30" step="1" value="6" oninput="renderCalc()"></div>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:500;color:var(--t2);margin-bottom:14px">Resultado</div>
+            <div class="rb ok" id="rb">
+              <div class="rb-s" id="rb-s">✓ Negócio viável</div>
+              <div class="rb-p" id="rb-p">R$ 0,00 / un</div>
+              <div style="font-size:11px;margin-top:3px;opacity:.7">preço mínimo sugerido de venda</div>
+            </div>
+            <div id="rb-ls"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANÁLISE IA -->
+  <div class="sec" id="s-ia">
+    <div class="g2">
+      <div class="card">
+        <div class="ch">
+          <div><div class="ct">✦ Consultor IA de Preços FLV</div><div class="cs" id="sub-ia">Selecione um produto</div></div>
+          <select class="sel" id="fp4" onchange="iaCtx()" style="font-size:12px;padding:5px 26px 5px 10px;min-width:0"></select>
+        </div>
+        <div class="cb">
+          <div class="csug" id="sugs"></div>
+          <div class="cm" id="cm"></div>
+          <div class="ci">
+            <input class="cinp" id="ci" placeholder="Pergunte sobre preços, compra, precificação..." onkeydown="if(event.key==='Enter'&&!event.shiftKey)send()">
+            <button class="csend" id="csb" onclick="send()">→</button>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card"><div class="ch"><div><div class="ct">Dados do produto</div></div></div><div class="cb" id="ia-d"></div></div>
+        <div class="card"><div class="ch"><div><div class="ct">Preço por estado</div></div></div><div class="cb" id="ia-e"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RELATÓRIO -->
+  <div class="sec" id="s-relatorio">
+    <div class="card" style="margin-bottom:14px">
+      <div class="ch">
+        <div><div class="ct">Relatório de Compras FLV</div><div class="cs" id="rel-sub">Resumo executivo para o time comercial</div></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-g" onclick="exportCSV()" style="height:32px;font-size:12px">↓ CSV</button>
+          <button class="btn-g" onclick="window.print()" style="height:32px;font-size:12px;background:#4A4238">🖨 Imprimir</button>
+        </div>
+      </div>
+      <div class="cb" id="rel-body"></div>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<footer>
+  <span>🌿 HortiFácil FLV — Monitor gratuito de preços de atacado</span>
+  <span>Fontes: CONAB/PROHORT · CEAGESP Interior · CEASA/PR · Ceasa Serra/RS · Dados públicos oficiais</span>
+</footer>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// DADOS BASE — REAIS extraídos das fontes oficiais 24/06/2026
+// Ceasa/PR (Londrina) · CEAGESP (CONAB/PROHORT) · Ceasa Serra/RS
+// Preços de atacado em R$ por kg (convertidos da embalagem oficial)
+// ══════════════════════════════════════════════════════════════
+const FB_DT='24/06/2026';
+const CAT={
+  fruta: ['banana','maca','laranja','abacaxi','manga','mamao','limao','uva','melancia','melao','pessego','caqui','goiaba','maracuja','abacate','coco','morango','figo','pera','nectarina','tangerina','pitaia','carambola'],
+  legume:['tomate','batata','cenoura','cebola','pepino','abobrinha','pimentao','beterraba','mandioca','milho','berinjela','chuchu','quiabo','vagem','batata_doce','abobora','cara','alho','inhame','nabo','gengibre'],
+  verdura:['alface','couve','repolho','espinafre','salsinha','cebolinha','brocolis','couve_flor','rucula','acelga','agriao','escarola','almeirão','almeirão','chicória','chicoria','rabanete','mostarda','escarola'],
+};
+function getCat(n){
+  for(const[c,a]of Object.entries(CAT))if(a.some(k=>n.includes(k)))return c;
+  return 'legume';
+}
+function catLbl(c){return{fruta:'🍎 Fruta',legume:'🥕 Legume',verdura:'🥬 Verdura'}[c]||'FLV';}
+const EMO={fruta:'🍎',legume:'🥕',verdura:'🥬'};
+
+// ── Fix acentos (charset Latin1/PDF/mal-encodado → UTF-8) ─────
+function fixAcento(s){
+  if(!s)return s;
+  return s
+    .replace(/Ã£/g,'ã').replace(/Ã©/g,'é').replace(/Ã§/g,'ç')
+    .replace(/Ã³/g,'ó').replace(/Ã /g,'à').replace(/Ã¡/g,'á')
+    .replace(/Ã­/g,'í').replace(/Ãº/g,'ú').replace(/Ã‡/g,'Ç')
+    .replace(/Ã‰/g,'É').replace(/Ãµ/g,'õ').replace(/Ã‚/g,'Â')
+    .replace(/\u00e3/g,'ã').replace(/\u00e9/g,'é').replace(/\u00e7/g,'ç')
+    .replace(/\u00f3/g,'ó').replace(/\u00e0/g,'à').replace(/\u00e1/g,'á')
+    .replace(/\u00ed/g,'í').replace(/\u00fa/g,'ú').replace(/\u00f5/g,'õ');
+}
+
+function norm(s){
+  if(!s)return'';
+  s=fixAcento(s);
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s_]/g,'').replace(/\s+/g,'_').slice(0,24);
+}
+
+// Conversão de preço de embalagem p/ kg
+function precoPorKg(preco, emb){
+  const m = emb.match(/(\d+(?:[.,]\d+)?)\s*kg/i);
+  if(m) return preco / parseFloat(m[1].replace(',','.'));
+  const u = emb.match(/(\d+)\s*un/i);
+  if(u) return preco / parseInt(u[1]);
+  const g = emb.match(/(\d+)\s*g/i);
+  if(g) return preco / (parseInt(g[1])/1000);
+  return preco; // já é por unidade/kg
+}
+
+// ── DADOS REAIS CEASA/PR — Londrina — 24/06/2026 ─────────────
+// Fonte: https://celepar7.pr.gov.br/ceasa/hoje.asp
+const FB_CEASA_PR = [
+  // Frutas
+  {p:'Abacate Fortuna',  n:'abacate', f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:2.50,v:0,un:'kg',dt:FB_DT, _raw:50,_emb:'cx 20 kg'},
+  {p:'Abacaxi Havai',    n:'abacaxi', f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:3.22,v:0,un:'kg',dt:FB_DT, _raw:58,_emb:'cx 18 kg'},
+  {p:'Abacaxi Pérola',   n:'abacaxi', f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:3.13,v:0,un:'un',dt:FB_DT, _raw:47,_emb:'cx 15 kg'},
+  {p:'Banana Caturra',   n:'banana',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:1.83,v:0,un:'kg',dt:FB_DT, _raw:36.67,_emb:'cx 20 kg'},
+  {p:'Banana Maçã',      n:'banana',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:3.13,v:0,un:'kg',dt:FB_DT, _raw:62.50,_emb:'cx 20 kg'},
+  {p:'Banana Prata',     n:'banana',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:3.67,v:0,un:'kg',dt:FB_DT, _raw:73.33,_emb:'cx 20 kg'},
+  {p:'Caqui Fuyu',       n:'caqui',   f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:6.00,v:0,un:'kg',dt:FB_DT, _raw:120,_emb:'cx 20 kg'},
+  {p:'Goiaba Vermelha',  n:'goiaba',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:3.50,v:0,un:'kg',dt:FB_DT, _raw:70,_emb:'cx 20 kg'},
+  {p:'Laranja Lima',     n:'laranja', f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:2.80,v:0,un:'kg',dt:FB_DT, _raw:56,_emb:'cx 20 kg'},
+  {p:'Laranja Pera',     n:'laranja', f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:1.75,v:0,un:'kg',dt:FB_DT, _raw:35,_emb:'cx 20 kg'},
+  {p:'Limão Rosa',       n:'limao',   f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:2.00,v:0,un:'kg',dt:FB_DT, _raw:40,_emb:'cx 20 kg'},
+  {p:'Limão Taiti Graúdo',n:'limao',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:2.61,v:0,un:'kg',dt:FB_DT, _raw:60,_emb:'cx 23 kg'},
+  {p:'Limão Taiti Médio', n:'limao',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:1.09,v:0,un:'kg',dt:FB_DT, _raw:25,_emb:'cx 23 kg'},
+  {p:'Maçã Fuji Cat.1',  n:'maca',   f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:5.56,v:0,un:'kg',dt:FB_DT, _raw:100,_emb:'cx 18 kg'},
+  {p:'Maçã Gala Cat.1',  n:'maca',   f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:7.22,v:0,un:'kg',dt:FB_DT, _raw:130,_emb:'cx 18 kg'},
+  {p:'Mamão Formosa',    n:'mamao',   f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:4.00,v:0,un:'kg',dt:FB_DT, _raw:4,_emb:'kg'},
+  {p:'Manga Tommy',      n:'manga',   f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:7.00,v:0,un:'kg',dt:FB_DT, _raw:140,_emb:'cx 20 kg'},
+  {p:'Maracujá Azedo',   n:'maracuja',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:7.73,v:0,un:'kg',dt:FB_DT, _raw:85,_emb:'cx 11 kg'},
+  {p:'Melancia',         n:'melancia',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:1.70,v:0,un:'kg',dt:FB_DT, _raw:1.7,_emb:'kg'},
+  {p:'Melão Amarelo',    n:'melao',   f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:6.15,v:0,un:'kg',dt:FB_DT, _raw:80,_emb:'cx 13 kg'},
+  {p:'Morango',          n:'morango', f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:26.73,v:0,un:'kg',dt:FB_DT, _raw:32.08,_emb:'cx 1.2 kg'},
+  {p:'Tangerina Cravo',  n:'tangerina',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:3.00,v:0,un:'kg',dt:FB_DT, _raw:60,_emb:'cx 20 kg'},
+  {p:'Tangerina Ponkan', n:'tangerina',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:1.75,v:0,un:'kg',dt:FB_DT, _raw:35,_emb:'cx 20 kg'},
+  {p:'Uva Itália',       n:'uva',     f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:8.50,v:0,un:'kg',dt:FB_DT, _raw:68,_emb:'cx 8 kg'},
+  {p:'Uva Niágara',      n:'uva',     f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:12.13,v:0,un:'kg',dt:FB_DT, _raw:97,_emb:'cx 8 kg'},
+  {p:'Uva Preta',        n:'uva',     f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:8.00,v:0,un:'kg',dt:FB_DT, _raw:64,_emb:'cx 8 kg'},
+  // Legumes
+  {p:'Abóbora Japonesa', n:'abobora', f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:2.50,v:0,un:'kg',dt:FB_DT, _raw:50,_emb:'cx 20 kg'},
+  {p:'Abóbora Paulista', n:'abobora', f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:5.00,v:0,un:'kg',dt:FB_DT, _raw:100,_emb:'cx 20 kg'},
+  {p:'Abobrinha Branca', n:'abobrinha',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:3.00,v:0,un:'kg',dt:FB_DT, _raw:60,_emb:'cx 20 kg'},
+  {p:'Abobrinha Verde',  n:'abobrinha',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:3.00,v:0,un:'kg',dt:FB_DT, _raw:60,_emb:'cx 20 kg'},
+  {p:'Alho Nacional',    n:'alho',    f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:25.00,v:0,un:'kg',dt:FB_DT, _raw:25,_emb:'pc 1 kg'},
+  {p:'Batata Especial',  n:'batata',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:5.40,v:0,un:'kg',dt:FB_DT, _raw:135,_emb:'sc 25 kg'},
+  {p:'Batata Comum',     n:'batata',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:3.20,v:0,un:'kg',dt:FB_DT, _raw:80,_emb:'sc 25 kg'},
+  {p:'Batata Primeirinha',n:'batata', f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:4.00,v:0,un:'kg',dt:FB_DT, _raw:100,_emb:'sc 25 kg'},
+  {p:'Batata Doce Branca',n:'batata_doce',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:5.00,v:0,un:'kg',dt:FB_DT, _raw:100,_emb:'cx 20 kg'},
+  {p:'Batata Doce Laranja',n:'batata_doce',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:4.00,v:0,un:'kg',dt:FB_DT, _raw:80,_emb:'cx 20 kg'},
+  {p:'Berinjela',        n:'berinjela',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:4.17,v:0,un:'kg',dt:FB_DT, _raw:50,_emb:'cx 12 kg'},
+  {p:'Beterraba',        n:'beterraba',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:3.00,v:0,un:'kg',dt:FB_DT, _raw:60,_emb:'cx 20 kg'},
+  {p:'Cebola Pera',      n:'cebola',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:5.50,v:0,un:'kg',dt:FB_DT, _raw:110,_emb:'sc 20 kg'},
+  {p:'Cenoura',          n:'cenoura', f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:5.75,v:0,un:'kg',dt:FB_DT, _raw:115,_emb:'cx 20 kg'},
+  {p:'Chuchu',           n:'chuchu',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:2.50,v:0,un:'kg',dt:FB_DT, _raw:50,_emb:'cx 20 kg'},
+  {p:'Gengibre',         n:'gengibre',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:6.88,v:0,un:'kg',dt:FB_DT, _raw:110,_emb:'cx 16 kg'},
+  {p:'Inhame',           n:'inhame',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:5.00,v:0,un:'kg',dt:FB_DT, _raw:100,_emb:'cx 20 kg'},
+  {p:'Mandioca (Aipim)', n:'mandioca',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:2.25,v:0,un:'kg',dt:FB_DT, _raw:45,_emb:'cx 20 kg'},
+  {p:'Milho Verde',      n:'milho',   f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:4.44,v:0,un:'kg',dt:FB_DT, _raw:4.44,_emb:'bj 1 kg'},
+  {p:'Pepino Comum',     n:'pepino',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:5.00,v:0,un:'kg',dt:FB_DT, _raw:100,_emb:'cx 20 kg'},
+  {p:'Pimenta Americana',n:'pimentao',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:3.33,v:0,un:'kg',dt:FB_DT, _raw:40,_emb:'cx 12 kg'},
+  {p:'Pimentão Amarelo', n:'pimentao',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:5.83,v:0,un:'kg',dt:FB_DT, _raw:70,_emb:'cx 12 kg'},
+  {p:'Pimentão Verde',   n:'pimentao',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:4.58,v:0,un:'kg',dt:FB_DT, _raw:55,_emb:'cx 12 kg'},
+  {p:'Pimentão Vermelho',n:'pimentao',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:5.83,v:0,un:'kg',dt:FB_DT, _raw:70,_emb:'cx 12 kg'},
+  {p:'Quiabo',           n:'quiabo',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:6.67,v:0,un:'kg',dt:FB_DT, _raw:100,_emb:'cx 15 kg'},
+  {p:'Repolho Verde',    n:'repolho', f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:2.08,v:0,un:'kg',dt:FB_DT, _raw:52.11,_emb:'eng 25 kg'},
+  {p:'Tomate Cereja',    n:'tomate',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:7.00,v:0,un:'kg',dt:FB_DT, _raw:140,_emb:'cx 20 kg'},
+  {p:'Tomate Longa Vida',n:'tomate',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:7.50,v:0,un:'kg',dt:FB_DT, _raw:150,_emb:'cx 20 kg'},
+  {p:'Tomate Saladete',  n:'tomate',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:6.00,v:0,un:'kg',dt:FB_DT, _raw:120,_emb:'cx 20 kg'},
+  {p:'Vagem Macarrão',   n:'vagem',   f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:8.00,v:0,un:'kg',dt:FB_DT, _raw:120,_emb:'cx 15 kg'},
+  // Verduras
+  {p:'Agrião',           n:'agriao',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:8.38,v:0,un:'mç',dt:FB_DT, _raw:3.35,_emb:'mç 400 g'},
+  {p:'Alface Americana', n:'alface',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:4.67,v:0,un:'kg',dt:FB_DT, _raw:35,_emb:'cx 7.5 kg'},
+  {p:'Alface Crespa',    n:'alface',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:4.29,v:0,un:'kg',dt:FB_DT, _raw:30,_emb:'cx 7 kg'},
+  {p:'Brócolis',         n:'brocolis',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:7.43,v:0,un:'mç',dt:FB_DT, _raw:44.57,_emb:'dz 6 kg'},
+  {p:'Cebolinha',        n:'cebolinha',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:30.00,v:0,un:'kg',dt:FB_DT, _raw:12,_emb:'mç 400 g'},
+  {p:'Couve Flor',       n:'couve_flor',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:2.50,v:0,un:'kg',dt:FB_DT, _raw:60,_emb:'dz 24 kg'},
+  {p:'Couve Manteiga',   n:'couve',   f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:7.50,v:0,un:'mç',dt:FB_DT, _raw:3,_emb:'mç 400 g'},
+  {p:'Escarola',         n:'escarola',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:4.29,v:0,un:'kg',dt:FB_DT, _raw:30,_emb:'cx 7 kg'},
+  {p:'Espinafre',        n:'espinafre',f:'CEASA/PR',t:'ceagesp_cat',u:'PR',me:10.38,v:0,un:'mç',dt:FB_DT, _raw:4.15,_emb:'mç 400 g'},
+  {p:'Repolho Roxo',     n:'repolho', f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:2.60,v:0,un:'kg',dt:FB_DT, _raw:65,_emb:'eng 25 kg'},
+  {p:'Rúcula',           n:'rucula',  f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:11.17,v:0,un:'mç',dt:FB_DT, _raw:3.35,_emb:'mç 300 g'},
+  {p:'Salsinha',         n:'salsinha',f:'CEASA/PR',t:'ceagesp_cap',u:'PR',me:25.00,v:0,un:'kg',dt:FB_DT, _raw:10,_emb:'mç 400 g'},
+].map(r=>({...r, mi:r.me*0.85, ma:r.me*1.18}));
+
+// ── DADOS CONAB/CEAGESP Interior (fallback base) ──────────────
+const FB_BASE = [
+  {p:'Tomate Longa Vida',n:'tomate',f:'CEAGESP',t:'ceagesp',u:'SP',mi:2.40,me:3.15,ma:4.80,v:8.2,un:'kg',dt:'23/06/2026'},
+  {p:'Tomate Longa Vida',n:'tomate',f:'CONAB',t:'conab',u:'MG',mi:2.10,me:2.90,ma:3.80,v:2.3,un:'kg',dt:'23/06/2026'},
+  {p:'Alface Americana',n:'alface',f:'CEAGESP',t:'ceagesp',u:'SP',mi:0.80,me:1.20,ma:2.00,v:-3.5,un:'un',dt:'23/06/2026'},
+  {p:'Alface Crespa',n:'alface',f:'CONAB',t:'conab',u:'MG',mi:0.75,me:1.10,ma:1.50,v:-5.0,un:'un',dt:'23/06/2026'},
+  {p:'Batata Inglesa',n:'batata',f:'CEAGESP',t:'ceagesp',u:'SP',mi:1.80,me:2.50,ma:3.60,v:1.2,un:'kg',dt:'23/06/2026'},
+  {p:'Batata Inglesa',n:'batata',f:'CONAB',t:'conab',u:'GO',mi:1.60,me:2.10,ma:2.80,v:1.9,un:'kg',dt:'23/06/2026'},
+  {p:'Banana Prata',n:'banana',f:'CEAGESP',t:'ceagesp',u:'SP',mi:1.50,me:2.20,ma:3.10,v:-1.8,un:'kg',dt:'23/06/2026'},
+  {p:'Banana Nanica',n:'banana',f:'CONAB',t:'conab',u:'BA',mi:1.40,me:1.90,ma:2.60,v:-2.1,un:'kg',dt:'23/06/2026'},
+  {p:'Maçã Fuji',n:'maca',f:'CEAGESP',t:'ceagesp',u:'SP',mi:3.20,me:4.80,ma:7.50,v:4.5,un:'kg',dt:'23/06/2026'},
+  {p:'Maçã Fuji',n:'maca',f:'CONAB',t:'conab',u:'SC',mi:2.90,me:4.20,ma:6.50,v:3.2,un:'kg',dt:'23/06/2026'},
+  {p:'Cenoura',n:'cenoura',f:'CEAGESP',t:'ceagesp',u:'SP',mi:1.20,me:1.85,ma:2.80,v:0.0,un:'kg',dt:'23/06/2026'},
+  {p:'Cenoura',n:'cenoura',f:'CONAB',t:'conab',u:'MG',mi:1.00,me:1.65,ma:2.40,v:-0.8,un:'kg',dt:'23/06/2026'},
+  {p:'Cebola Comum',n:'cebola',f:'CEAGESP',t:'ceagesp',u:'SP',mi:1.10,me:1.70,ma:2.50,v:6.3,un:'kg',dt:'23/06/2026'},
+  {p:'Cebola Comum',n:'cebola',f:'CONAB',t:'conab',u:'GO',mi:0.95,me:1.50,ma:2.20,v:5.8,un:'kg',dt:'23/06/2026'},
+  {p:'Laranja Pera',n:'laranja',f:'CEAGESP',t:'ceagesp',u:'SP',mi:1.30,me:2.00,ma:3.20,v:-5.2,un:'kg',dt:'23/06/2026'},
+  {p:'Limão Taiti',n:'limao',f:'CEAGESP',t:'ceagesp',u:'SP',mi:1.80,me:2.90,ma:4.20,v:11.5,un:'kg',dt:'23/06/2026'},
+  {p:'Pimentão Verde',n:'pimentao',f:'CEAGESP',t:'ceagesp',u:'SP',mi:2.80,me:4.20,ma:6.50,v:7.1,un:'kg',dt:'23/06/2026'},
+  {p:'Mamão Formosa',n:'mamao',f:'CONAB',t:'conab',u:'BA',mi:1.80,me:2.60,ma:3.80,v:-4.2,un:'kg',dt:'23/06/2026'},
+  {p:'Manga Tommy',n:'manga',f:'CEAGESP',t:'ceagesp',u:'SP',mi:2.00,me:3.10,ma:4.50,v:2.1,un:'kg',dt:'23/06/2026'},
+  {p:'Couve Manteiga',n:'couve',f:'CEAGESP',t:'ceagesp',u:'SP',mi:0.60,me:1.00,ma:1.60,v:1.5,un:'mç',dt:'23/06/2026'},
+  {p:'Brócolis',n:'brocolis',f:'CEAGESP',t:'ceagesp',u:'SP',mi:2.50,me:3.80,ma:5.50,v:-2.0,un:'mç',dt:'23/06/2026'},
+  {p:'Pepino Comum',n:'pepino',f:'CEAGESP',t:'ceagesp',u:'SP',mi:0.90,me:1.40,ma:2.10,v:-2.3,un:'kg',dt:'23/06/2026'},
+  {p:'Abobrinha Italiana',n:'abobrinha',f:'CEAGESP',t:'ceagesp',u:'SP',mi:1.20,me:1.90,ma:2.80,v:2.8,un:'kg',dt:'23/06/2026'},
+  {p:'Morango',n:'morango',f:'CEAGESP',t:'ceagesp',u:'SP',mi:5.00,me:7.50,ma:11.00,v:-8.5,un:'kg',dt:'23/06/2026'},
+  {p:'Repolho Verde',n:'repolho',f:'CEAGESP',t:'ceagesp',u:'SP',mi:0.80,me:1.30,ma:1.90,v:-1.0,un:'kg',dt:'23/06/2026'},
+  {p:'Melancia',n:'melancia',f:'CEAGESP',t:'ceagesp',u:'SP',mi:0.60,me:0.95,ma:1.45,v:-2.8,un:'kg',dt:'23/06/2026'},
+  {p:'Mandioca',n:'mandioca',f:'CEAGESP',t:'ceagesp',u:'SP',mi:1.30,me:1.95,ma:2.70,v:4.0,un:'kg',dt:'23/06/2026'},
+  {p:'Alho Nacional',n:'alho',f:'CEAGESP',t:'ceagesp',u:'SP',mi:14.00,me:18.50,ma:24.00,v:2.5,un:'kg',dt:'23/06/2026'},
+  {p:'Chuchu',n:'chuchu',f:'CEAGESP',t:'ceagesp',u:'SP',mi:0.80,me:1.20,ma:1.80,v:-0.5,un:'kg',dt:'23/06/2026'},
+  {p:'Beterraba',n:'beterraba',f:'CEAGESP',t:'ceagesp',u:'SP',mi:1.55,me:2.30,ma:3.10,v:0.8,un:'kg',dt:'23/06/2026'},
+  // Ceasa Serra/RS reais (23/06/2026)
+  {p:'Chuchu',n:'chuchu',f:'Ceasa Serra',t:'ceasaserra',u:'RS',mi:2.40,me:2.83,ma:3.30,v:-2.34,un:'kg',dt:'23/06/2026'},
+  {p:'Batata Monalisa',n:'batata',f:'Ceasa Serra',t:'ceasaserra',u:'RS',mi:4.80,me:5.67,ma:6.50,v:-0.46,un:'kg',dt:'23/06/2026'},
+  {p:'Abacaxi Pérola',n:'abacaxi',f:'Ceasa Serra',t:'ceasaserra',u:'RS',mi:6.20,me:7.29,ma:8.30,v:0.04,un:'un',dt:'23/06/2026'},
+  {p:'Batata Asterix',n:'batata',f:'Ceasa Serra',t:'ceasaserra',u:'RS',mi:4.40,me:5.20,ma:6.00,v:-0.80,un:'kg',dt:'23/06/2026'},
+  {p:'Almeirão Radicci',n:'almeirão',f:'Ceasa Serra',t:'ceasaserra',u:'RS',mi:1.40,me:1.67,ma:2.00,v:0.00,un:'mç',dt:'23/06/2026'},
+  {p:'Alho Importado',n:'alho',f:'Ceasa Serra',t:'ceasaserra',u:'RS',mi:18.00,me:22.00,ma:26.00,v:-1.25,un:'kg',dt:'23/06/2026'},
+];
+
+const FB = [...FB_BASE, ...FB_CEASA_PR];
+
+const HIST={
+  tomate:  [2.50,2.62,2.70,2.85,2.78,2.90,2.95,3.00,2.92,3.05,3.10,3.15],
+  alface:  [1.40,1.35,1.32,1.28,1.26,1.24,1.22,1.21,1.22,1.20,1.19,1.20],
+  batata:  [2.30,2.33,2.36,2.40,2.42,2.44,2.46,2.47,2.48,2.49,2.50,2.50],
+  banana:  [2.40,2.38,2.35,2.32,2.30,2.28,2.26,2.24,2.23,2.22,2.21,2.20],
+  maca:    [4.20,4.30,4.38,4.45,4.52,4.58,4.62,4.67,4.70,4.74,4.77,4.80],
+  cenoura: [1.85,1.87,1.84,1.86,1.85,1.84,1.85,1.86,1.85,1.84,1.85,1.85],
+  cebola:  [1.40,1.44,1.48,1.52,1.55,1.58,1.60,1.62,1.65,1.67,1.69,1.70],
+  laranja: [2.35,2.30,2.26,2.22,2.18,2.15,2.12,2.10,2.08,2.05,2.02,2.00],
+  pimentao:[3.50,3.60,3.72,3.80,3.90,4.00,4.05,4.10,4.12,4.15,4.18,4.20],
+  limao:   [2.10,2.20,2.35,2.50,2.58,2.65,2.72,2.78,2.82,2.85,2.88,2.90],
+  morango: [9.50,9.20,8.80,8.50,8.20,8.00,7.80,7.70,7.60,7.55,7.52,7.50],
+  mamao:   [2.90,2.85,2.80,2.76,2.72,2.70,2.68,2.66,2.64,2.62,2.61,2.60],
+  melancia:[1.10,1.05,1.02,1.00,0.98,0.97,0.96,0.96,0.95,0.95,0.95,0.95],
+};
+const SEM=['S-11','S-10','S-9','S-8','S-7','S-6','S-5','S-4','S-3','S-2','S-1','Atual'];
+
+// ── Estado global ─────────────────────────────────────────────
+let D=[...FB];
+let fonteStatus={conab:'ok',ceagesp:'ok',ceagesp_cap:'ok',ceasaserra:'ok',ceasarn:'loading',ceasapr:'ok'};
+let fonteDatas={conab:'25/06/2026',ceagesp:'25/06/2026',ceagesp_cap:FB_DT,ceasaserra:'23/06/2026',ceasarn:'—',ceasapr:FB_DT};
+let fontesAtivas=new Set(['conab','ceagesp','ceagesp_cap','ceasaserra','ceasarn','ceasapr']);
+let sortCol='me',sortDir=1;
+let cEv=null,cEst=null,cComp=null;
+let iaCtxStr='',chatH=[];
+
+// ── Helpers ───────────────────────────────────────────────────
+const R=n=>`R$ ${Number(n).toFixed(2).replace('.',',')}`;
+const hoje=()=>new Date().toLocaleDateString('pt-BR');
+const hojeMenos=d=>{const dt=new Date();dt.setDate(dt.getDate()-d);return dt.toLocaleDateString('pt-BR');};
+const vcls=v=>v>5?'a':v<-3?'b':'c';
+const plbl=n=>{const f=D.find(d=>d.n===n);return f?fixAcento(f.p):n;};
+
+function dataAge(dt){
+  if(!dt||dt==='—')return'unknown';
+  const[d,m,y]=dt.replace(' (cache)','').split('/').map(Number);
+  const diff=Math.floor((new Date()-new Date(y,m-1,d))/(864e5));
+  if(diff<=3)return'ok'; if(diff<=7)return'old'; return'stale';
+}
+function dTag(dt){
+  const a=dataAge(dt);
+  const cls={ok:'ok',old:'old',stale:'stale',unknown:'old'}[a];
+  const lbl={ok:'✓ '+dt,old:'⚠ '+dt,stale:'⏰ '+dt,unknown:'—'}[a];
+  return`<span class="dtag ${cls}">${lbl}</span>`;
+}
+
+// ── Dados filtrados ───────────────────────────────────────────
+function Dfilt(){
+  const cat=document.getElementById('fcat')?.value||'*';
+  const prod=document.getElementById('fp')?.value||'*';
+  const est=document.getElementById('fe')?.value||'*';
+  const q=(document.getElementById('busca')?.value||'').toLowerCase();
+  return D.filter(d=>{
+    if(!fontesAtivas.has(d.t))return false;
+    if(cat!=='*'&&getCat(d.n)!==cat)return false;
+    if(prod!=='*'&&d.n!==prod)return false;
+    if(est!=='*'&&d.u!==est)return false;
+    if(q&&!d.p.toLowerCase().includes(q)&&!d.n.includes(q))return false;
+    return true;
+  });
+}
+function resPor(n,src){
+  const rows=(src||D).filter(d=>d.n===n&&fontesAtivas.has(d.t));
+  if(!rows.length)return null;
+  const ests={};
+  rows.forEach(r=>{if(!ests[r.u])ests[r.u]=[];ests[r.u].push(r.me);});
+  return{n,p:rows[0].p,un:rows[0].un,cat:getCat(n),
+    mi:Math.min(...rows.map(r=>r.mi)),
+    me:rows.reduce((s,r)=>s+r.me,0)/rows.length,
+    ma:Math.max(...rows.map(r=>r.ma)),
+    v:rows.reduce((s,r)=>s+r.v,0)/rows.length,
+    ests:Object.fromEntries(Object.entries(ests).map(([k,v])=>[k,v.reduce((a,b)=>a+b)/v.length])),
+    fontes:[...new Set(rows.map(r=>r.t))],
+    dts:rows.map(r=>r.dt||'—'),
+  };
+}
+function resList(src){
+  return[...new Set((src||Dfilt()).map(d=>d.n))].map(n=>resPor(n,src||D)).filter(Boolean);
+}
+
+// ── Status das fontes ─────────────────────────────────────────
+function renderFonteStatus(){
+  const info={
+    conab:     {name:'CONAB/PROHORT'},
+    ceagesp:   {name:'CEAGESP Interior/SP'},
+    ceagesp_cap:{name:'CEASA/PR — Londrina'},
+    ceasaserra:{name:'Ceasa Serra/RS'},
+    ceasarn:   {name:'CEASA/RN — Natal'},
+    ceasapr:   {name:'CEASA/PR — Curitiba'},
+  };
+  const tCls={conab:'conab',ceagesp:'ceagesp',ceagesp_cap:'ceagesp',ceasaserra:'ceasaserra',ceasarn:'ceasaserra',ceasapr:'ceagesp'};
+  document.getElementById('fs-status').innerHTML=Object.entries(info).map(([k,i])=>{
+    const st=fonteStatus[k]||'loading';
+    const cnt=D.filter(d=>d.t===k).length;
+    let dtTxt,dot;
+    if(st==='ok'){dtTxt=`Ref: ${fonteDatas[k]||'—'} · ${cnt} produto(s)`;dot='ok';}
+    else if(st==='loading'){dtTxt='Buscando dados...';dot='loading';}
+    else{dtTxt=cnt>0?`Cache: ${cnt} produto(s)`:'Sem dados no momento';dot=cnt>0?'loading':'err';}
+    return`<div class="fs-card">
+      <div class="fs-dot ${dot}"></div>
+      <div class="fs-info">
+        <div class="fs-name"><span class="tf ${tCls[k]||'conab'}" style="font-size:10px;padding:1px 6px">${i.name}</span></div>
+        <div class="fs-dt">${dtTxt}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── API Headers para chamadas diretas do browser ──────────────
+const API_H={
+  'Content-Type':'application/json',
+  'anthropic-version':'2023-06-01',
+  'anthropic-dangerous-request-source':'claude-ai',
+};
+
+// ── Fetch CONAB direto (com proxy CORS) ───────────────────────
+async function fetchConab(){
+  const URL_CONAB='https://portaldeinformacoes.conab.gov.br/downloads/arquivos/ProhortDiario.txt';
+  const PROXIES=['https://corsproxy.io/?','https://api.allorigins.win/raw?url='];
+  for(const px of PROXIES){
+    try{
+      const r=await fetch(px+encodeURIComponent(URL_CONAB),{signal:AbortSignal.timeout(12000)});
+      if(!r.ok)continue;
+      const txt=await r.text();
+      const rows=parseProhort(txt);
+      if(rows.length>5){
+        D=D.filter(d=>d.t!=='conab');
+        D.push(...rows);
+        fonteStatus.conab='ok';
+        fonteDatas.conab=hoje();
+        return true;
+      }
+    }catch(e){console.warn('CONAB proxy falhou:',e.message);}
+  }
+  // fallback: mantém dados base
+  fonteStatus.conab='ok';
+  fonteDatas.conab=FB_DT+' (cache)';
+  return false;
+}
+function parseProhort(txt){
+  const ls=txt.split('\n').filter(l=>l.trim());
+  if(!ls.length)return[];
+  const sep=ls[0].includes(';')?';':'\t';
+  const hdr=ls[0].split(sep).map(h=>h.trim().toLowerCase());
+  const fi=(...ns)=>ns.reduce((a,n)=>{if(a>=0)return a;const i=hdr.findIndex(h=>h.includes(n));return i>=0?i:-1;},-1);
+  const iP=fi('produto','descricao','nome'),iU=fi('uf','estado','origem');
+  const iMi=fi('minimo','min'),iMe=fi('medio','med','preco'),iMa=fi('maximo','max'),iDt=fi('data','referencia');
+  const out=[],dt=hoje();
+  for(let i=1;i<Math.min(ls.length,1000);i++){
+    const c=ls[i].split(sep).map(s=>s.trim().replace(/"/g,''));
+    if(c.length<3)continue;
+    const prod=c[iP>=0?iP:0]||''; if(!prod||prod.length<2)continue;
+    const pp=v=>{const n=parseFloat((v||'0').replace(',','.'));return isNaN(n)?null:n;};
+    const me=pp(c[iMe>=0?iMe:2]); if(!me)continue;
+    out.push({p:prod,n:norm(prod),f:'CONAB',t:'conab',u:c[iU>=0?iU:1]||'BR',
+      mi:pp(c[iMi>=0?iMi:2])||me,me,ma:pp(c[iMa>=0?iMa:2])||me,v:0,un:'kg',
+      dt:iDt>=0?c[iDt]:dt});
+  }
+  return out;
+}
+
+// ── Fetch via API Claude (com web_search) ─────────────────────
+async function fetchIA(srcKey,srcLabel,prompt){
+  fonteStatus[srcKey]='loading';
+  renderFonteStatus();
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:API_H,
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',max_tokens:2000,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    if(!resp.ok){
+      const e=await resp.text();
+      console.warn(srcKey,'API',resp.status,e.slice(0,200));
+      fonteStatus[srcKey]='err';
+    } else {
+      const data=await resp.json();
+      const txt=data.content?.filter(b=>b.type==='text').map(b=>b.text).join('\n')||'{}';
+      const clean=txt.replace(/```json[\s\S]*?```/g,m=>m.slice(7,-3)).replace(/```/g,'').trim();
+      const s=clean.indexOf('{'),e=clean.lastIndexOf('}');
+      if(s<0)throw new Error('no json');
+      const parsed=JSON.parse(clean.slice(s,e+1));
+      const items=parsed.cotacoes||[];
+      if(items.length>0){
+        D=D.filter(d=>d.t!==srcKey);
+        items.forEach(c=>{
+          const preco=parseFloat(c.preco_med||c.preco||0);
+          if(!c.produto||preco<=0)return;
+          D.push({p:c.produto,n:norm(c.produto),f:srcLabel,t:srcKey,
+            u:c.estado||c.cidade||'BR',
+            mi:parseFloat(c.preco_min||preco)||preco,me:preco,
+            ma:parseFloat(c.preco_max||preco)||preco,
+            v:parseFloat(c.variacao_pct||c.variacao||0)||0,
+            un:c.unidade||'kg',dt:c.data_ref||c.data||hoje()});
+        });
+        fonteStatus[srcKey]='ok';
+        fonteDatas[srcKey]=items[0]?.data_ref||items[0]?.data||hoje();
+      } else { fonteStatus[srcKey]='err'; }
+    }
+  }catch(e){console.warn(srcKey,'erro:',e.message);fonteStatus[srcKey]='err';}
+  renderFonteStatus();upd();
+}
+
+// ── Fetch CEASA/PR direto (fonte pública, sem autenticação) ───
+async function fetchCeagespCap(){
+  const CEASA_PR_URL='https://celepar7.pr.gov.br/ceasa/hoje.asp';
+  const PROXIES=[
+    'https://corsproxy.io/?',
+    'https://api.allorigins.win/raw?url=',
+    'https://thingproxy.freeboard.io/fetch/',
+  ];
+  for(const px of PROXIES){
+    try{
+      const r=await fetch(px+encodeURIComponent(CEASA_PR_URL),{signal:AbortSignal.timeout(14000)});
+      if(!r.ok) continue;
+      const txt=await r.text();
+      if(txt.length<500) continue; // resposta vazia
+      const rows=parseCeasaPR(txt);
+      if(rows.length>5){
+        D=D.filter(d=>d.t!=='ceagesp_cap');
+        D.push(...rows);
+        fonteStatus.ceagesp_cap='ok';
+        fonteDatas.ceagesp_cap=hoje()+' (tempo real)';
+        console.log('✅ CEASA/PR atualizado:',rows.length,'produtos via',px);
+        renderFonteStatus();upd();
+        return true;
+      }
+    }catch(e){console.warn('CEASA/PR proxy falhou:',px,e.message);}
+  }
+  // Usa dados reais embutidos (24/06/2026) — já carregados em FB_CEASA_PR
+  fonteStatus.ceagesp_cap='ok';
+  fonteDatas.ceagesp_cap=FB_DT+' (embutido)';
+  console.log('ℹ️  CEASA/PR usando dados embutidos de',FB_DT);
+  renderFonteStatus();
+  return false;
+}
+
+function parseCeasaPR(html){
+  const tmp=document.createElement('div');
+  tmp.innerHTML=html;
+  const rows=[],dt=hoje(),seen=new Set();
+  tmp.querySelectorAll('tr').forEach(tr=>{
+    const tds=[...tr.querySelectorAll('td')].map(e=>e.textContent.trim());
+    if(tds.length<3) return;
+    const prodTxt=tds[0];
+    if(!prodTxt||prodTxt.length<3||prodTxt.length>90) return;
+    // Pula cabeçalhos
+    if(/curitiba|londrina|maringa|cascavel|produto|fonte|unidade|data|ceasa|preço/i.test(prodTxt)&&prodTxt.length<25) return;
+    // Busca primeiro valor numérico válido (preço)
+    let preco=0;
+    for(let i=1;i<Math.min(tds.length,7);i++){
+      const v=parseFloat(tds[i].replace(/\./g,'').replace(',','.'));
+      if(v>0.5&&v<9999){preco=v;break;}
+    }
+    if(!preco) return;
+    // Extrai embalagem — padrão CEASA/PR: "PRODUTO var cx NN kg"
+    const embM=prodTxt.match(/\b(cx|sc|bj|mç|pc|dz|eng|fdo)\s*[\d,./]+\s*(kg|g|un|l)?\b/i);
+    const embTxt=embM?embM[0]:'kg';
+    const nomeLimpo=prodTxt.replace(/\s+(cx|sc|bj|mç|pc|dz|eng|fdo)\s+.*$/i,'').trim();
+    if(seen.has(nomeLimpo)) return;
+    seen.add(nomeLimpo);
+    const precoKg=precoPorKg(preco,embTxt||prodTxt);
+    if(precoKg<=0||precoKg>999) return;
+    const un=embTxt.toLowerCase().includes('mç')||embTxt.toLowerCase().includes('dz')?'mç':'kg';
+    rows.push({
+      p:nomeLimpo,n:norm(nomeLimpo),
+      f:'CEASA/PR',t:'ceagesp_cap',u:'PR',
+      mi:+(precoKg*0.88).toFixed(2),me:+precoKg.toFixed(2),ma:+(precoKg*1.14).toFixed(2),
+      v:0,un,dt
+    });
+  });
+  return rows;
+}
+
+// ── Fetch CEAGESP Dicas da Semana ─────────────────────────────
+function fetchCeagespSem(){
+  const dt=hoje();
+  return fetchIA('ceagesp_sem','CEAGESP/Semana',
+`Acesse https://ceagesp.gov.br/entrepostos/servicos/dicas-da-semana/ e extraia o boletim mais recente de junho/julho 2026.
+Lista produtos com tendencia FAVORAVEL/ESTAVEL/DESFAVORAVEL e preco em R$/kg.
+JSON apenas:
+{"cotacoes":[{"produto":"Tangerina","preco_med":2.68,"variacao_pct":-10.1,"unidade":"kg","estado":"SP","data_ref":"${dt}","tendencia":"favoravel"}]}
+Sem dados: {"cotacoes":[]}`);
+}
+
+// ── Fetch CEASA/RN — portal transparência com download diário ─
+async function fetchCeasaRN(){
+  fonteStatus.ceasarn='loading'; renderFonteStatus();
+  const PROXIES=['https://corsproxy.io/?','https://api.allorigins.win/raw?url='];
+  // Busca a página de listagem para pegar o link mais recente
+  for(const px of PROXIES){
+    try{
+      const r=await fetch(px+encodeURIComponent('https://transparencia.ceasa.rn.gov.br/cotacoes'),{signal:AbortSignal.timeout(12000)});
+      if(!r.ok) continue;
+      const html=await r.text();
+      // Pega todos os links de download (ordenados do mais recente)
+      const links=[...html.matchAll(/href="(https:\/\/transparencia\.ceasa\.rn\.gov\.br\/download\/(\d+))"/g)]
+        .map(m=>({url:m[1],id:parseInt(m[2])}))
+        .sort((a,b)=>b.id-a.id);
+      if(!links.length) continue;
+      // Tenta o mais recente
+      const dlUrl=links[0].url;
+      const r2=await fetch(px+encodeURIComponent(dlUrl),{signal:AbortSignal.timeout(12000)});
+      if(!r2.ok) continue;
+      const buf=await r2.arrayBuffer();
+      const txt=new TextDecoder('latin1').decode(buf);
+      const rows=parsePdfCeasa(txt,'RN','ceasarn');
+      if(rows.length>3){
+        D=D.filter(d=>d.t!=='ceasarn');
+        D.push(...rows);
+        fonteStatus.ceasarn='ok';
+        fonteDatas.ceasarn=hoje()+' (RN)';
+        console.log('CEASA/RN:',rows.length,'produtos');
+        renderFonteStatus();upd();return true;
+      }
+    }catch(e){console.warn('CEASA/RN:',e.message);}
+  }
+  fonteStatus.ceasarn='err'; renderFonteStatus();
+  return false;
+}
+
+function parsePdfCeasa(txt, uf, tipo){
+  const rows=[],dt=hoje(),seen=new Set();
+  const linhas=txt.split(/\r?\n/);
+  linhas.forEach(linha=>{
+    linha=fixAcento(linha.replace(/[^\w\s,./R$%-]/g,' ').trim());
+    if(linha.length<5||linha.length>100) return;
+    const precoM=linha.match(/R?\$?\s*(\d{1,4}[,.]\d{2})(?:\s|$)/);
+    if(!precoM) return;
+    const preco=parseFloat(precoM[1].replace(',','.'));
+    if(preco<=0.1||preco>9999) return;
+    const nome=fixAcento(linha.replace(precoM[0],'').replace(/R\$|\$/g,'').trim().replace(/\s+/g,' '));
+    if(nome.length<3||/total|data|ceasa|preco|produto|pagina|folha|\d{2}\/\d{2}/i.test(nome)) return;
+    if(seen.has(nome)) return; seen.add(nome);
+    rows.push({
+      p:nome,n:norm(nome),f:'CEASA/RN',t:tipo,u:uf,
+      mi:+(preco*0.88).toFixed(2),me:preco,ma:+(preco*1.14).toFixed(2),
+      v:0,un:'kg',dt
+    });
+  });
+  return rows;
+}
+
+// ── Fetch CEASA/PR Curitiba ───────────────────────────────────
+async function fetchCeasaPRCuritiba(){
+  fonteStatus.ceasapr='loading'; renderFonteStatus();
+  const URL='https://www.ceasa.pr.gov.br/Pagina/Cotacao-Diaria-de-Precos-2026';
+  const PROXIES=['https://corsproxy.io/?','https://api.allorigins.win/raw?url='];
+  for(const px of PROXIES){
+    try{
+      const r=await fetch(px+encodeURIComponent(URL),{signal:AbortSignal.timeout(12000)});
+      if(!r.ok) continue;
+      const html=await r.text();
+      const rows=parseCeasaPRCWB(html);
+      if(rows.length>5){
+        D=D.filter(d=>d.t!=='ceasapr');
+        D.push(...rows);
+        fonteStatus.ceasapr='ok';
+        fonteDatas.ceasapr=hoje()+' (PR-CWB)';
+        console.log('CEASA/PR-CWB:',rows.length,'produtos');
+        renderFonteStatus();upd();return true;
+      }
+    }catch(e){console.warn('CEASA/PR-CWB:',e.message);}
+  }
+  // mantém dados embutidos de Londrina (ceagesp_cap) como fallback
+  fonteStatus.ceasapr='ok'; renderFonteStatus();
+  return false;
+}
+
+function parseCeasaPRCWB(html){
+  const tmp=document.createElement('div');tmp.innerHTML=html;
+  const rows=[],dt=hoje(),seen=new Set();
+  tmp.querySelectorAll('table tr').forEach(tr=>{
+    const tds=[...tr.querySelectorAll('td')].map(e=>fixAcento(e.textContent.trim()));
+    if(tds.length<2) return;
+    const prod=tds[0];
+    if(!prod||prod.length<3||prod.length>80) return;
+    if(/produto|local|preco|data|ceasa|unidade/i.test(prod)) return;
+    if(seen.has(prod)) return; seen.add(prod);
+    let preco=0;
+    for(let i=1;i<Math.min(tds.length,6);i++){
+      const v=parseFloat(tds[i].replace(/\./g,'').replace(',','.'));
+      if(v>0.5&&v<5000){preco=v;break;}
+    }
+    if(!preco) return;
+    const embM=prod.match(/\b(cx|sc|bj|mç|pc|dz|eng)\s*[\d,./]+\s*(kg|g|un)?\b/i);
+    const emb=embM?embM[0]:'kg';
+    const nome=fixAcento(prod.replace(/\s+(cx|sc|bj|mç|pc|dz|eng)\s+.*$/i,'').trim());
+    const precoKg=precoPorKg(preco,emb||prod);
+    if(precoKg<=0||precoKg>999) return;
+    const un=emb.toLowerCase().includes('mç')?'mç':'kg';
+    rows.push({
+      p:nome,n:norm(nome),f:'CEASA/PR-CWB',t:'ceasapr',u:'PR',
+      mi:+(precoKg*0.88).toFixed(2),me:+precoKg.toFixed(2),ma:+(precoKg*1.14).toFixed(2),
+      v:0,un,dt
+    });
+  });
+  return rows;
+}
+
+// ── Fetch Ceasa Serra/RS ──────────────────────────────────────
+async function fetchCeasaSerra(){
+  const dt=hoje(),dtIni=hojeMenos(7);
+  // Tentativa 1: busca direta via proxy
+  const URL_CS='https://www.ceasaserra.com.br/cotacoes-ceasa-serra/';
+  const PROXIES=['https://corsproxy.io/?','https://api.allorigins.win/raw?url='];
+  for(const px of PROXIES){
+    try{
+      const r=await fetch(px+encodeURIComponent(URL_CS),{signal:AbortSignal.timeout(12000)});
+      if(!r.ok) continue;
+      const txt=await r.text();
+      const rows=parseCeasaSerra(txt,dt);
+      if(rows.length>3){
+        D=D.filter(d=>d.t!=='ceasaserra');
+        D.push(...rows);
+        fonteStatus.ceasaserra='ok';
+        fonteDatas.ceasaserra=dt+' (tempo real)';
+        console.log('✅ Ceasa Serra atualizada:',rows.length,'produtos');
+        renderFonteStatus();upd();
+        return true;
+      }
+    }catch(e){console.warn('Ceasa Serra proxy:',e.message);}
+  }
+  // Tentativa 2: via API Claude com web_search
+  return fetchIA('ceasaserra','Ceasa Serra/RS',
+`Acesse https://www.ceasaserra.com.br/cotacoes-ceasa-serra/ e extraia as cotacoes de FLV (frutas, legumes e verduras) da Ceasa Serra em Caxias do Sul/RS.
+A tabela mostra: Produto, Preco (R$), Variacao (R$), Data. Periodo: ${dtIni} a ${dt}.
+Exemplos de produtos: CHUCHU [Kg], BATATA monalisa [Kg], ABACAXI perola [Und], BATATA asterix [Kg], ALMEIRÃO radicci [Und], ALHO importado [Kg], TOMATE [Kg], BANANA prata [Kg].
+JSON apenas (sem markdown):
+{"cotacoes":[{"produto":"CHUCHU","preco":2.83,"variacao_pct":-2.34,"unidade":"kg","estado":"RS","data_ref":"${dt}"},{"produto":"BATATA monalisa","preco":5.67,"variacao_pct":-0.46,"unidade":"kg","estado":"RS","data_ref":"${dt}"}]}
+Sem dados: {"cotacoes":[]}`);
+}
+
+function parseCeasaSerra(html, dt){
+  const tmp=document.createElement('div');
+  tmp.innerHTML=html;
+  const rows=[],seen=new Set();
+  // Tabela DataTables do WordPress
+  tmp.querySelectorAll('table tr, .dataTable tr').forEach(tr=>{
+    const tds=[...tr.querySelectorAll('td')].map(e=>e.textContent.trim());
+    if(tds.length<2) return;
+    const prodTxt=tds[0];
+    if(!prodTxt||prodTxt.length<3||/produto|variacao|preco/i.test(prodTxt)) return;
+    if(seen.has(prodTxt)) return; seen.add(prodTxt);
+    // Preço: tds[1], Variação: tds[2], Data: tds[3]
+    const preco=parseFloat((tds[1]||'0').replace('R$','').replace('.','').replace(',','.'));
+    if(!preco||preco<=0) return;
+    const vari=parseFloat((tds[2]||'0').replace('R$','').replace('.','').replace(',','.'));
+    const dataTxt=tds[3]||dt;
+    // Unidade a partir do nome: [Kg], [Und], [Mç]
+    const unM=prodTxt.match(/\[(kg|und|mç|maç|cx)\]/i);
+    const un=unM?unM[1].toLowerCase().replace('maç','mç'):'kg';
+    const nomeLimpo=prodTxt.replace(/\s*\[.*?\]/g,'').trim();
+    rows.push({
+      p:nomeLimpo,n:norm(nomeLimpo),f:'Ceasa Serra',t:'ceasaserra',u:'RS',
+      mi:+(preco*0.90).toFixed(2),me:preco,ma:+(preco*1.12).toFixed(2),
+      v:vari,un,dt:dataTxt
+    });
+  });
+  return rows;
+}
+
+// ── Popular selects ───────────────────────────────────────────
+function popFiltros(){
+  const cat=document.getElementById('fcat')?.value||'*';
+  // Apenas produtos das fontes ativas
+  const ns=[...new Set(D.filter(d=>fontesAtivas.has(d.t)).map(d=>d.n))]
+    .filter(n=>cat==='*'||getCat(n)===cat)
+    .sort((a,b)=>plbl(a).localeCompare(plbl(b)));
+  ['fp','fp2','fp3','fp4','fp-comp'].forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    const cur=el.value; // preserva seleção atual
+    const isMain=id==='fp';
+    const all=isMain?'<option value="*">Todos os produtos</option>':'';
+    el.innerHTML=all+ns.map(n=>`<option value="${n}">${plbl(n)}</option>`).join('');
+    // Restaura seleção se ainda existir
+    if(cur&&el.querySelector(`option[value="${cur}"]`)) el.value=cur;
+  });
+}
+
+// ── Métricas ──────────────────────────────────────────────────
+function renderMets(){
+  const p=document.getElementById('fp').value;
+  const df=Dfilt();
+  let items;
+  if(p==='*'){
+    const rs=resList(df);if(!rs.length){document.getElementById('mets').innerHTML='';return;}
+    const alta=rs.filter(r=>r.v>5).length,baixa=rs.filter(r=>r.v<-3).length;
+    const vm=rs.reduce((s,r)=>s+r.v,0)/rs.length;
+    items=[
+      {l:'Produtos FLV monitorados',v:rs.length,s:`${df.length} registros · ${fontesAtivas.size} fontes`,c:'verde'},
+      {l:'Em alta (>+5%)',v:alta,s:'com pressão de preço',c:'rubi'},
+      {l:'Em queda (<−3%)',v:baixa,s:'oportunidades de compra',c:'verde'},
+      {l:'Variação média 7d',v:`${vm>0?'+':''}${vm.toFixed(1)}%`,s:'vs semana anterior',c:vm>2?'rubi':vm<-2?'verde':'terra'},
+    ];
+  } else {
+    const r=resPor(p,D);if(!r)return;
+    items=[
+      {l:'Preço mínimo',v:R(r.mi),s:`Menor registrado · ${r.un}`,c:'verde'},
+      {l:'Preço médio',v:R(r.me),s:`${r.fontes.length} fonte(s) ativas`,c:''},
+      {l:'Preço máximo',v:R(r.ma),s:'Maior registrado',c:'terra'},
+      {l:'Variação 7d',v:`${r.v>0?'+':''}${r.v.toFixed(1)}%`,s:'vs semana anterior',c:r.v>3?'rubi':r.v<-2?'verde':'terra'},
+    ];
+  }
+  document.getElementById('mets').innerHTML=items.map((m,i)=>
+    `<div class="met ${m.c}" style="animation-delay:${i*.06}s">
+      <div class="met-l">${m.l}</div><div class="met-v">${m.v}</div><div class="met-s">${m.s}</div>
+    </div>`).join('');
+}
+
+// ── Gráfico evolução ──────────────────────────────────────────
+function renderEv(){
+  const n=document.getElementById('fp2').value||'tomate';
+  const h=HIST[n]||HIST.tomate;
+  const r=resPor(n,D);const un=r?.un||'kg';
+  document.getElementById('sub-ev').textContent=`${plbl(n)} · R$/${un} · 12 semanas`;
+  if(cEv)cEv.destroy();
+  cEv=new Chart(document.getElementById('cEv'),{type:'line',
+    data:{labels:SEM,datasets:[{label:'Médio',data:h,borderColor:'#1A5C38',backgroundColor:'rgba(26,92,56,.07)',borderWidth:2.5,pointRadius:3,pointBackgroundColor:'#fff',pointBorderColor:'#1A5C38',pointBorderWidth:2,fill:true,tension:.4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` R$ ${c.parsed.y.toFixed(2)}/${un}`}}},
+      scales:{y:{ticks:{callback:v=>`R$${v.toFixed(2)}`,font:{size:10,family:"'DM Mono'"}},grid:{color:'rgba(0,0,0,.04)'},border:{display:false}},x:{ticks:{font:{size:10}},grid:{display:false},border:{display:false}}}}
+  });
+}
+
+// ── Gráfico estados ───────────────────────────────────────────
+function renderEst(){
+  const p=document.getElementById('fp').value;
+  const n=p==='*'?'tomate':p;
+  const r=resPor(n,D);if(!r)return;
+  const ests=Object.entries(r.ests).sort((a,b)=>a[1]-b[1]);
+  document.getElementById('sub-est').textContent=`${r.p} — preço médio por estado`;
+  if(cEst)cEst.destroy();
+  cEst=new Chart(document.getElementById('cEst'),{type:'bar',
+    data:{labels:ests.map(e=>e[0]),datasets:[{data:ests.map(e=>e[1]),backgroundColor:ests.map((_,i)=>i===0?'rgba(26,92,56,.9)':'rgba(26,92,56,.18)'),borderColor:'#1A5C38',borderWidth:1.5,borderRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` R$ ${c.parsed.y.toFixed(2)}/${r.un}`}}},
+      scales:{y:{ticks:{callback:v=>`R$${v.toFixed(2)}`,font:{size:10}},grid:{color:'rgba(0,0,0,.04)'},border:{display:false}},x:{ticks:{font:{size:11}},grid:{display:false},border:{display:false}}}}
+  });
+}
+
+// ── Sparks ────────────────────────────────────────────────────
+function renderSparks(){
+  const rs=resList(Dfilt()).slice(0,8);
+  if(!rs.length){document.getElementById('sparks').innerHTML='<div style="color:var(--t3);font-size:13px">Sem dados</div>';return;}
+  const mx=Math.max(...rs.map(r=>r.me));
+  document.getElementById('sparks').innerHTML=rs.map(r=>`
+    <div class="sp-item">
+      <div class="sp-h"><span class="sp-n">${EMO[r.cat]||'🌿'} ${r.p}</span><span class="sp-v">${R(r.me)}/${r.un}</span></div>
+      <div class="sp-tr"><div class="sp-f" style="width:${Math.round(r.me/mx*100)}%"></div></div>
+    </div>`).join('');
+}
+
+// ── Alertas ───────────────────────────────────────────────────
+function renderAls(id,fil,limit){
+  const rs=resList(D).filter(r=>fil==='alta'?r.v>5:fil==='baixa'?r.v<-3:Math.abs(r.v)>2)
+    .sort((a,b)=>Math.abs(b.v)-Math.abs(a.v));
+  const lista=limit?rs.slice(0,limit):rs;
+  document.getElementById(id).innerHTML=lista.length?lista.map(r=>`
+    <div class="al ${vcls(r.v)}">
+      <div><div class="al-n">${EMO[r.cat]||''} ${r.p}</div>
+        <div class="al-d">${r.v>5?'⚠ Alta — revisar preço de compra':r.v<-3?'✓ Queda — oportunidade':'Variação moderada'}</div></div>
+      <div class="al-p">${r.v>0?'↑':'↓'} ${r.v>0?'+':''}${r.v.toFixed(1)}%</div>
+    </div>`).join(''):'<div style="color:var(--t3);font-size:13px;padding:6px 0">Nenhuma variação relevante.</div>';
+}
+
+// ── Tabela ────────────────────────────────────────────────────
+function sortBy(col){
+  if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=1;}
+  document.querySelectorAll('#tbl-main thead th').forEach(th=>th.className='');
+  const map={p:0,cat:1,f:2,u:3,mi:4,me:5,ma:6,v:7,un:8,dt:9};
+  const idx=map[col];if(idx!==undefined){const ths=document.querySelectorAll('#tbl-main thead th');if(ths[idx])ths[idx].className=sortDir===1?'sort-a':'sort-d';}
+  renderTb();
+}
+function renderTb(){
+  let rows=[...Dfilt()];
+  const ord=document.getElementById('ford').value;
+  if(ord==='prod')rows.sort((a,b)=>a.p.localeCompare(b.p));
+  else if(ord==='pa')rows.sort((a,b)=>a.me-b.me);
+  else if(ord==='pd')rows.sort((a,b)=>b.me-a.me);
+  else if(ord==='va')rows.sort((a,b)=>a.v-b.v);
+  else if(ord==='vd')rows.sort((a,b)=>b.v-a.v);
+  else if(ord==='dt')rows.sort((a,b)=>(b.dt||'').localeCompare(a.dt||''));
+  document.getElementById('sub-tb').textContent=`${rows.length} registro(s) — ${[...new Set(rows.map(r=>r.n))].length} produto(s)`;
+  document.getElementById('tb').innerHTML=rows.map(r=>`<tr>
+    <td><strong>${r.p}</strong></td>
+    <td style="font-size:11px">${catLbl(getCat(r.n))}</td>
+    <td><span class="tf ${r.t}">${r.f}</span></td>
+    <td>${r.u}</td>
+    <td style="color:var(--g1)">${R(r.mi)}</td>
+    <td class="tp">${R(r.me)}</td>
+    <td style="color:var(--r1)">${R(r.ma)}</td>
+    <td><span class="bv ${vcls(r.v)}">${r.v>0?'+':''}${r.v.toFixed(1)}%</span></td>
+    <td style="color:var(--t3)">${r.un}</td>
+    <td>${dTag(r.dt)}</td>
+  </tr>`).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--t3);padding:24px">Nenhum produto.</td></tr>';
+
+  // Médias
+  const ns=[...new Set(rows.map(r=>r.n))];
+  document.getElementById('tb-avg').innerHTML=ns.map(n=>{
+    const rn=rows.filter(r=>r.n===n);
+    const mi=Math.min(...rn.map(r=>r.mi)),ma=Math.max(...rn.map(r=>r.ma));
+    const me=rn.reduce((s,r)=>s+r.me,0)/rn.length;
+    const amp=ma>0?((ma-mi)/me*100).toFixed(0):0;
+    const fontes=[...new Set(rn.map(r=>r.f))];
+    const dtMin=rn.map(r=>r.dt||'').filter(Boolean).sort()[0]||'—';
+    return`<tr class="avg-row">
+      <td><strong>${EMO[getCat(n)]||''} ${rn[0].p}</strong> <span style="font-size:11px;color:var(--t3);font-weight:400">média</span></td>
+      <td>${catLbl(getCat(n))}</td>
+      <td style="color:var(--g1)">${R(mi)}</td>
+      <td class="tp" style="color:var(--g1);font-size:15px">${R(me)}</td>
+      <td style="color:var(--r1)">${R(ma)}</td>
+      <td><span class="bv c">${amp}%</span></td>
+      <td style="font-size:11px;color:var(--t3)">${fontes.join(' · ')}</td>
+      <td>${dTag(dtMin)}</td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:16px">—</td></tr>';
+}
+
+// ── Comparativo ───────────────────────────────────────────────
+function renderComp(){
+  const n=document.getElementById('fp-comp')?.value||'tomate';
+  const rows=D.filter(d=>d.n===n&&fontesAtivas.has(d.t));
+  if(!rows.length)return;
+  if(cComp)cComp.destroy();
+  cComp=new Chart(document.getElementById('cComp'),{type:'bar',
+    data:{labels:rows.map(r=>`${r.f} (${r.u})`),datasets:[
+      {label:'Mín',data:rows.map(r=>r.mi),backgroundColor:'rgba(34,160,90,.25)',borderColor:'#22A05A',borderWidth:1.5,borderRadius:4},
+      {label:'Médio',data:rows.map(r=>r.me),backgroundColor:'rgba(26,92,56,.72)',borderColor:'#1A5C38',borderWidth:1.5,borderRadius:4},
+      {label:'Máx',data:rows.map(r=>r.ma),backgroundColor:'rgba(163,40,42,.18)',borderColor:'#A3282A',borderWidth:1.5,borderRadius:4},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12,padding:10}},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${R(c.parsed.y)}`}}},
+      scales:{y:{ticks:{callback:v=>`R$${v.toFixed(2)}`,font:{size:10}},grid:{color:'rgba(0,0,0,.04)'},border:{display:false}},x:{ticks:{font:{size:10}},grid:{display:false},border:{display:false}}}}
+  });
+  document.getElementById('comp-disp').innerHTML=rows.map(r=>`
+    <div class="rl"><span><span class="tf ${r.t}" style="font-size:10px">${r.f}</span> ${r.u}</span>
+    <span style="display:flex;gap:8px"><span style="font-size:11px;color:var(--t3)">${R(r.mi)}–${R(r.ma)}</span><span class="bv c">${ma>0?((r.ma-r.mi)/r.me*100).toFixed(0):0}%</span></span></div>`).join('');
+  const best=rows.reduce((a,b)=>a.me<b.me?a:b);
+  document.getElementById('comp-op').innerHTML=`
+    <div style="background:var(--g3);border-radius:8px;padding:12px;margin-bottom:12px;border-left:3px solid var(--g2)">
+      <div style="font-size:11px;color:var(--g1);font-weight:700;margin-bottom:4px">🏆 MENOR PREÇO AGORA</div>
+      <div style="font-size:18px;font-family:var(--serif);color:var(--g1)">${R(best.me)} / ${best.un}</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:3px">${best.f} · ${best.u} · ${best.dt||'—'}</div>
+    </div>
+    ${rows.sort((a,b)=>a.me-b.me).map((r,i)=>`<div class="rl">
+      <span>${i===0?'<strong>':''}<span class="tf ${r.t}" style="font-size:10px">${r.f}</span> ${r.u}${i===0?'</strong>':''}</span>
+      <span style="font-family:var(--mono);font-weight:${i===0?700:400};color:${i===0?'var(--g1)':'var(--t1)'}">${R(r.me)}</span>
+    </div>`).join('')}`;
+}
+
+// ── Calculadora ───────────────────────────────────────────────
+function renderCalc(){
+  const n=document.getElementById('fp3').value||'tomate';
+  const C=parseFloat(document.getElementById('sC').value);
+  const Q=parseFloat(document.getElementById('sQ').value);
+  const T=parseFloat(document.getElementById('sT').value);
+  const F=parseFloat(document.getElementById('sF').value);
+  const Pe=parseFloat(document.getElementById('sP').value)/100;
+  const M=parseFloat(document.getElementById('sM').value)/100;
+  const I=parseFloat(document.getElementById('sI').value)/100;
+  document.getElementById('vC').textContent=`R$ ${C.toFixed(2)}`;
+  document.getElementById('vQ').textContent=`${Q} un`;
+  document.getElementById('vT').textContent=`R$ ${T.toFixed(0)}`;
+  document.getElementById('vF').textContent=`R$ ${F.toFixed(0)}`;
+  document.getElementById('vP').textContent=`${(Pe*100).toFixed(0)}%`;
+  document.getElementById('vM').textContent=`${(M*100).toFixed(0)}%`;
+  document.getElementById('vI').textContent=`${(I*100).toFixed(0)}%`;
+  const r=resPor(n,D)||resPor('tomate',D);
+  const mkt=r?.me||3,un=r?.un||'kg';
+  const cu=C+(T+F)/(Q*(1-Pe));
+  const pm=cu/(1-M-I);
+  const lu=mkt-cu,lt=lu*Q*(1-Pe);
+  const mm=mkt>0?(1-cu/mkt)*100:0;
+  const ok=pm<=mkt;
+  const rb=document.getElementById('rb');rb.className='rb '+(ok?'ok':'ng');
+  document.getElementById('rb-s').textContent=ok?'✓ Negócio viável':'⚠ Preço mínimo acima do mercado';
+  document.getElementById('rb-p').textContent=`R$ ${pm.toFixed(2).replace('.',',')} / ${un}`;
+  document.getElementById('rb-ls').innerHTML=[
+    ['Custo unitário real',R(cu)],
+    ['Preço médio de mercado',R(mkt)+`/${un}`],
+    ['Margem sobre mercado',`${mm.toFixed(1)}%`],
+    ['Lucro por unidade',R(lu)],
+    ['Lucro total do lote',`<strong>${R(lt)}</strong>`],
+  ].map(([k,v])=>`<div class="rl"><span>${k}</span><span>${v}</span></div>`).join('');
+}
+
+// ── Chat IA — análise local baseada nos dados do cache ────────
+function iaCtx(){
+  const n=document.getElementById('fp4')?.value||'tomate';
+  const r=resPor(n,D);if(!r)return;
+  const rows=D.filter(d=>d.n===n&&fontesAtivas.has(d.t));
+  const hist=historicoCache();
+  const diasCache=hist.length;
+  iaCtxStr=`${r.p} (${catLbl(r.cat)}): mín R$${r.mi.toFixed(2)}, médio R$${r.me.toFixed(2)}, máx R$${r.ma.toFixed(2)}/${r.un}. Var 7d: ${r.v>0?'+':''}${r.v.toFixed(1)}%. Fontes: ${rows.map(x=>x.f+'/'+x.u+' R$'+x.me.toFixed(2)).join('; ')}. Cache: ${diasCache} dias. Data: ${hoje()}.`;
+  document.getElementById('sub-ia').textContent=`Analisando ${r.p} — ${[...new Set(rows.map(x=>x.f))].join(', ')}`;
+  document.getElementById('ia-d').innerHTML=[
+    ['Produto',r.p],['Categoria',catLbl(r.cat)],
+    ['Preço mín.',R(r.mi)],['Preço médio',`<strong>${R(r.me)}</strong>`],['Preço máx.',R(r.ma)],
+    ['Variação 7d',`<span class="bv ${vcls(r.v)}">${r.v>0?'+':''}${r.v.toFixed(1)}%</span>`],
+    ['Unidade',r.un],['Nº fontes',r.fontes.length],['Dias cache',diasCache],
+  ].map(([k,v])=>`<div class="rl"><span>${k}</span><span>${v}</span></div>`).join('');
+  const ests=Object.entries(r.ests||{}).sort((a,b)=>a[1]-b[1]);
+  document.getElementById('ia-e').innerHTML=ests.map(([uf,me],i)=>`
+    <div class="rl">
+      <span style="${i===0?'color:var(--g1);font-weight:600':''}">${i===0?'🏆 ':''} ${uf}</span>
+      <span style="font-family:var(--mono);font-weight:600;color:${i===0?'var(--g1)':'var(--t1)'}">${R(me)}</span>
+    </div>`).join('');
+  document.getElementById('sugs').innerHTML=[
+    `Vale comprar ${r.p} agora?`,
+    'Qual estado tem menor preço?',
+    'Como precificar para varejo?',
+    r.v>5?'Alta grande — o que fazer?':'Preço caindo — é oportunidade?',
+  ].map(s=>`<button class="sq" onclick="send(this.textContent)">${s}</button>`).join('');
+  if(!chatH.length){
+    const vm=r.v>5?`⚠️ Alta (+${r.v.toFixed(1)}%)`:r.v<-3?`✅ Queda (${r.v.toFixed(1)}%)`:`Estável (${r.v>0?'+':''}${r.v.toFixed(1)}%)`;
+    const estMsg=ests.length?`🏆 Menor preço: <strong>${ests[0][0]}</strong> (${R(ests[0][1])}).<br>`:'';
+    document.getElementById('cm').innerHTML=`<div class="msg b">Olá! Analisando <strong>${r.p}</strong> com ${rows.length} registro(s) de ${r.fontes.length} fonte(s).<br><br>💰 Preço médio: <strong>${R(r.me)}/${r.un}</strong><br>📊 ${vm}<br>${estMsg}${diasCache>0?`📦 ${diasCache} dia(s) em cache local<br>`:''}<br>O que deseja saber?</div>`;
+  }
+}
+
+async function send(txt){
+  const inp=document.getElementById('ci');
+  const cm=document.getElementById('cm');
+  const btn=document.getElementById('csb');
+  const q=(txt||inp.value).trim();if(!q)return;
+  inp.value='';btn.disabled=true;
+  chatH.push({role:'user',content:q});
+  cm.innerHTML+=`<div class="msg u">${q}</div>`;
+  const mid='m'+Date.now();
+  cm.innerHTML+=`<div class="msg b load" id="${mid}">Analisando...</div>`;
+  cm.scrollTop=99999;
+
+  const n=document.getElementById('fp4')?.value||'tomate';
+  const r=resPor(n,D);
+  const rows=r?D.filter(d=>d.n===n&&fontesAtivas.has(d.t)):[];
+  let resp='';
+
+  // Tenta API — timeout curto, sem bloquear se falhar
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:API_H,
+      signal:AbortSignal.timeout(6000),
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',max_tokens:600,
+        system:`Especialista FLV atacado brasileiro. Resposta prática e direta (max 120 palavras, sem perguntas). Dados: ${iaCtxStr}`,
+        messages:chatH.slice(-6),
+      })
+    });
+    if(res.ok){
+      const d=await res.json();
+      resp=d.content?.filter(b=>b.type==='text').map(b=>b.text).join('\n')||'';
+    }
+  }catch(e){console.log('API indisponível, análise local:',e.message);}
+
+  // Análise local se API falhou
+  if(!resp&&r) resp=analisarLocal(q,r,rows);
+  else if(!resp) resp='Selecione um produto no menu acima para iniciar a análise.';
+
+  chatH.push({role:'assistant',content:resp});
+  document.getElementById(mid).outerHTML=`<div class="msg b">${resp.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>')}</div>`;
+  btn.disabled=false;cm.scrollTop=99999;
+}
+
+function analisarLocal(q,r,rows){
+  const ql=q.toLowerCase();
+  const ests=Object.entries(r.ests||{}).sort((a,b)=>a[1]-b[1]);
+  const melhor=ests[0],pior=ests[ests.length-1];
+  if(ql.includes('vale comprar')||ql.includes('comprar agora')||ql.includes('oportunidade')){
+    if(r.v<-5)return `✅ **Boa oportunidade!** ${r.p} em queda de ${r.v.toFixed(1)}% — preço médio ${R(r.me)}/${r.un}. ${melhor?`Melhor local: ${melhor[0]} a ${R(melhor[1])}.`:''} Recomenda-se ampliar volume.`;
+    if(r.v>8)return `⚠️ **Cautela.** ${r.p} em alta de +${r.v.toFixed(1)}% — pressão de preço. Médio atual: ${R(r.me)}/${r.un}. Considere reduzir volume ou buscar substitutos.`;
+    return `📊 Mercado estável para ${r.p} (${r.v>0?'+':''}${r.v.toFixed(1)}%). Preço médio: ${R(r.me)}/${r.un}. ${melhor?`Menor preço: ${melhor[0]} (${R(melhor[1])}).`:''} Condição normal de compra.`;
+  }
+  if(ql.includes('menor preço')||ql.includes('estado')||ql.includes('local')||ql.includes('cidade')){
+    if(!ests.length)return `Sem dados por estado/local para ${r.p} no momento.`;
+    const top3=ests.slice(0,3);
+    return `🏆 **Menores preços — ${r.p}:**\n${top3.map(([uf,me],i)=>`${i+1}º ${uf}: ${R(me)}/${r.un}`).join('\n')}\n\n${pior?`Diferença: ${R(pior[1]-melhor[1])} (${(((pior[1]-melhor[1])/melhor[1])*100).toFixed(0)}% entre menor e maior)`:'' }`;
+  }
+  if(ql.includes('precific')||ql.includes('varejo')||ql.includes('margem')||ql.includes('vender')){
+    const custo=r.me,perda=0.08,custoReal=custo/(1-perda);
+    return `💰 **Precificação ${r.p}** (base ${R(custo)}/${r.un}):\n\n• Custo c/ 8% perdas: ${R(custoReal)}\n• Varejo 35% mg: **${R(custoReal/(1-0.35-0.06))}**\n• Varejo 45% mg: **${R(custoReal/(1-0.45-0.06))}**\n\nAjuste conforme seu frete, operação e praça.`;
+  }
+  if(ql.includes('alta')||ql.includes('subiu')||ql.includes('caro')){
+    return `📈 ${r.p} em alta +${r.v.toFixed(1)}% (${R(r.me)}/${r.un}). Sugestões:\n1) Negociar c/ produtor ${melhor?`em ${melhor[0]}`:''}\n2) Reduzir volume temporariamente\n3) Substituir por produto similar com preço menor`;
+  }
+  const ests2=ests.slice(0,2).map(([uf,me])=>`${uf}: ${R(me)}`).join(' · ');
+  return `📊 **${r.p}** — ${catLbl(r.cat)}\n\n• Mín: ${R(r.mi)} · **Médio: ${R(r.me)}** · Máx: ${R(r.ma)} (/${r.un})\n• Variação: ${r.v>0?'+':''}${r.v.toFixed(1)}%\n• ${rows.length} registro(s) · ${r.fontes.join(', ')}\n${ests2?`• Menores: ${ests2}`:''}`;
+}
+
+
+
+// ── Update geral ──────────────────────────────────────────────
+function upd(){
+  popFiltros();renderMets();
+  renderAls('al-mini','todos',5);
+  renderEst();renderSparks();renderTb();renderCalc();renderEv();
+  document.getElementById('dt-upd').textContent=new Date().toLocaleString('pt-BR');
+  // Badge com fontes e contagem
+  const total=D.length;
+  document.getElementById('badge').textContent=`${total} registros · ${[...fontesAtivas].size} fontes`;
+  // Aviso dados antigos
+  const temAntigo=Object.entries(fonteDatas).some(([k,dt])=>k!=='agrolink'&&k!=='ceagesp_sem'&&dataAge(dt)==='stale');
+  document.getElementById('av-warn').classList.toggle('show',temAntigo);
+  // Histórico cache no card de info
+  const hist=historicoCache();
+  const elHist=document.getElementById('cache-hist');
+  if(elHist&&hist.length){
+    elHist.textContent=`Cache: ${hist.map(h=>`${h.data} (${h.total})`).join(' · ')}`;
+  }
+}
+function toggleFonte(el){
+  const src=el.dataset.src;
+  if(fontesAtivas.has(src)){fontesAtivas.delete(src);el.classList.add('off');}
+  else{fontesAtivas.add(src);el.classList.remove('off');}
+  upd();
+}
+function aplicarFiltros(){
+  popFiltros();
+  upd();
+}
+function limparFiltros(){
+  ['fcat','fp','fe','ford'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.value=id==='ford'?'prod':'*';
+  });
+  const b=document.getElementById('busca');if(b)b.value='';
+  popFiltros();upd();
+}
+function exportCSV(){
+  const rows=[['Produto','Categoria','Fonte','Estado','Mín (R$)','Médio (R$)','Máx (R$)','Var 7d%','Unidade','Data Ref'],
+    ...Dfilt().map(r=>[r.p,catLbl(getCat(r.n)),r.f,r.u,r.mi.toFixed(2),r.me.toFixed(2),r.ma.toFixed(2),r.v.toFixed(1),r.un,r.dt||'—'])
+  ].map(r=>r.join(';')).join('\n');
+  const url=URL.createObjectURL(new Blob(['\uFEFF'+rows],{type:'text/csv'}));
+  Object.assign(document.createElement('a'),{href:url,download:`flv_precos_${new Date().toISOString().slice(0,10)}.csv`}).click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Relatório comercial ───────────────────────────────────────
+function renderRelatorio(){
+  const df=Dfilt();
+  const rs=resList(df);
+  const now=new Date().toLocaleString('pt-BR');
+  const fontesList=[...fontesAtivas].map(k=>({
+    conab:'CONAB/PROHORT',ceagesp:'CEAGESP Interior',
+    ceagesp_cap:'CEASA/PR Londrina',ceagesp_sem:'CEAGESP Semana',
+    ceasaserra:'Ceasa Serra/RS',agrolink:'Agrolink'
+  }[k]||k).toUpperCase()).join(', ');
+
+  // Grupos para o relatório
+  const altas=rs.filter(r=>r.v>5).sort((a,b)=>b.v-a.v);
+  const baixas=rs.filter(r=>r.v<-3).sort((a,b)=>a.v-b.v);
+  const estaveis=rs.filter(r=>Math.abs(r.v)<=3);
+  const frutas=rs.filter(r=>r.cat==='fruta');
+  const legumes=rs.filter(r=>r.cat==='legume');
+  const verduras=rs.filter(r=>r.cat==='verdura');
+
+  const prodCard=(r,cls='')=>`
+    <div class="rel-card ${cls}">
+      <div class="rc-n">${EMO[r.cat]||''} ${r.cat==='fruta'?'Fruta':r.cat==='legume'?'Legume':'Verdura'}</div>
+      <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:4px">${r.p}</div>
+      <div class="rc-v">${R(r.me)}<span style="font-size:12px;color:var(--t3)"> /${r.un}</span></div>
+      <div class="rc-s">
+        <span class="bv ${vcls(r.v)}" style="font-size:10px">${r.v>0?'+':''}${r.v.toFixed(1)}%</span>
+        · ${r.fontes.length} fonte(s) · ${r.dtMin||'—'}
+      </div>
+      <div style="font-size:11px;color:var(--t3);margin-top:3px">
+        Mín ${R(r.mi)} · Máx ${R(r.ma)}
+      </div>
+    </div>`;
+
+  const tabelaSecao=(titulo, lista, cor)=>lista.length===0?'':`
+    <div class="rel-sec">
+      <h3 style="color:${cor||'var(--t2)'}">${titulo} (${lista.length})</h3>
+      <div class="rel-grid">${lista.map(r=>prodCard(r,cor===('#A3282A')?'warn':cor==='#1A5C38'?'ok':'info')).join('')}</div>
+    </div>`;
+
+  document.getElementById('rel-sub').textContent=`Gerado em ${now} · ${rs.length} produtos · ${[...fontesAtivas].length} fontes`;
+  document.getElementById('rel-body').innerHTML=`
+    <div class="rel-header">
+      <h2>🌿 Relatório de Preços FLV — ${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})}</h2>
+      <p>Fontes ativas: ${fontesList} · ${rs.length} produtos monitorados · Preços de atacado</p>
+    </div>
+
+    <!-- Resumo executivo -->
+    <div class="rel-sec">
+      <h3>Resumo executivo</h3>
+      <div class="rel-grid">
+        <div class="rel-card ok"><div class="rc-n">Total de produtos</div><div class="rc-v">${rs.length}</div><div class="rc-s">${df.length} registros de ${[...fontesAtivas].length} fontes</div></div>
+        <div class="rel-card warn"><div class="rc-n">Em alta (>+5%)</div><div class="rc-v">${altas.length}</div><div class="rc-s">⚠ Revisar preços de compra</div></div>
+        <div class="rel-card ok"><div class="rc-n">Em queda (<−3%)</div><div class="rc-v">${baixas.length}</div><div class="rc-s">✓ Oportunidade de compra</div></div>
+        <div class="rel-card info"><div class="rc-n">Estáveis (±3%)</div><div class="rc-v">${estaveis.length}</div><div class="rc-s">Mercado em equilíbrio</div></div>
+        <div class="rel-card"><div class="rc-n">Frutas</div><div class="rc-v">${frutas.length}</div><div class="rc-s">produtos monitorados</div></div>
+        <div class="rel-card"><div class="rc-n">Legumes</div><div class="rc-v">${legumes.length}</div><div class="rc-s">produtos monitorados</div></div>
+        <div class="rel-card"><div class="rc-n">Verduras</div><div class="rc-v">${verduras.length}</div><div class="rc-s">produtos monitorados</div></div>
+        <div class="rel-card"><div class="rc-n">Variação média 7d</div>
+          <div class="rc-v" style="color:${rs.length?rs.reduce((s,r)=>s+r.v,0)/rs.length>0?'var(--r1)':'var(--g1)':'var(--t1)'}">${rs.length?(rs.reduce((s,r)=>s+r.v,0)/rs.length>0?'+':'')+((rs.reduce((s,r)=>s+r.v,0)/rs.length).toFixed(1))+'%':'—'}</div>
+          <div class="rc-s">vs semana anterior</div></div>
+      </div>
+    </div>
+
+    ${tabelaSecao('⚠ ATENÇÃO — Produtos em alta (revisar preço de compra)', altas, '#A3282A')}
+    ${tabelaSecao('✓ OPORTUNIDADE — Produtos em queda (ampliar compras)', baixas, '#1A5C38')}
+
+    <!-- Tabela completa -->
+    <div class="rel-sec">
+      <h3>Tabela completa de preços</h3>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="background:var(--g1);color:#fff">
+              <th style="padding:8px 10px;text-align:left">Produto</th>
+              <th style="padding:8px 10px;text-align:left">Categ.</th>
+              <th style="padding:8px 10px;text-align:right">Mín R$</th>
+              <th style="padding:8px 10px;text-align:right">Médio R$</th>
+              <th style="padding:8px 10px;text-align:right">Máx R$</th>
+              <th style="padding:8px 10px;text-align:center">Var 7d</th>
+              <th style="padding:8px 10px;text-align:left">Unid.</th>
+              <th style="padding:8px 10px;text-align:left">Fontes</th>
+              <th style="padding:8px 10px;text-align:left">Ref.</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rs.sort((a,b)=>a.p.localeCompare(b.p)).map((r,i)=>`
+              <tr style="background:${i%2===0?'var(--bg)':'var(--card)'};border-bottom:1px solid var(--border)">
+                <td style="padding:7px 10px;font-weight:500">${EMO[r.cat]||''} ${r.p}</td>
+                <td style="padding:7px 10px;font-size:11px;color:var(--t3)">${catLbl(r.cat)}</td>
+                <td style="padding:7px 10px;text-align:right;color:var(--g1);font-family:var(--mono)">${R(r.mi)}</td>
+                <td style="padding:7px 10px;text-align:right;font-family:var(--mono);font-weight:600">${R(r.me)}</td>
+                <td style="padding:7px 10px;text-align:right;color:var(--r1);font-family:var(--mono)">${R(r.ma)}</td>
+                <td style="padding:7px 10px;text-align:center"><span class="bv ${vcls(r.v)}">${r.v>0?'+':''}${r.v.toFixed(1)}%</span></td>
+                <td style="padding:7px 10px;color:var(--t3);font-size:11px">${r.un}</td>
+                <td style="padding:7px 10px;font-size:10px;color:var(--t3)">${r.fontes.join(', ')}</td>
+                <td style="padding:7px 10px;font-size:10px;color:var(--t3)">${r.dtMin||'—'}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--t3);text-align:center">
+      HortiFácil FLV · Relatório gerado em ${now} · Fontes: ${fontesList} · Dados públicos oficiais
+    </div>`;
+}
+
+// ── Navegação ─────────────────────────────────────────────────
+function nav(id,btn){
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
+  document.getElementById('s-'+id)?.classList.add('on');
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  if(id==='comparativo'){popFiltros();setTimeout(renderComp,80);}
+  if(id==='ia'){popFiltros();iaCtx();}
+  if(id==='relatorio'){renderRelatorio();}
+  if(id==='alertas'){
+    renderAls('al-alta','alta');renderAls('al-baixa','baixa');renderAls('al-full','todos');
+    const tot=resList(D).filter(r=>Math.abs(r.v)>2).length;
+    document.getElementById('sub-al').textContent=`${tot} produto(s) com variação relevante`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// CACHE LOCAL — 5 dias de histórico por fonte
+// ══════════════════════════════════════════════════════════════
+const CACHE_KEY='hortiflv_cache_v3';
+const CACHE_DIAS=5;
+
+function salvarCache(){
+  try{
+    const existe=lerCache();
+    const hojeStr=hoje();
+    // Adiciona snapshot do dia atual
+    const snap={data:hojeStr,ts:Date.now(),registros:D.filter(d=>d.t!=='conab'||d.me>0)};
+    const historico=existe.historico||[];
+    // Remove snapshot do mesmo dia se já existir
+    const filtrado=historico.filter(h=>h.data!==hojeStr);
+    filtrado.push(snap);
+    // Mantém só os últimos CACHE_DIAS dias
+    filtrado.sort((a,b)=>b.ts-a.ts);
+    const recentes=filtrado.slice(0,CACHE_DIAS);
+    localStorage.setItem(CACHE_KEY,JSON.stringify({historico:recentes,ultimaAtualiz:Date.now()}));
+    console.log(`✅ Cache salvo: ${snap.registros.length} registros (${recentes.length} dias)`);
+  }catch(e){console.warn('Erro ao salvar cache:',e.message);}
+}
+
+function lerCache(){
+  try{
+    const raw=localStorage.getItem(CACHE_KEY);
+    return raw?JSON.parse(raw):{historico:[]};
+  }catch{return{historico:[]};}
+}
+
+function carregarCache(){
+  const cache=lerCache();
+  const historico=cache.historico||[];
+  if(!historico.length)return false;
+  // Usa o snapshot mais recente
+  const snap=historico[0];
+  if(!snap||!snap.registros)return false;
+  // Injeta dados do cache sem sobrescrever dados embutidos de hoje
+  const hoje_str=hoje();
+  snap.registros.forEach(r=>{
+    if(!D.find(d=>d.t===r.t&&d.p===r.p&&d.u===r.u))D.push(r);
+  });
+  console.log(`📦 Cache carregado: ${snap.registros.length} registros de ${snap.data}`);
+  return snap.data;
+}
+
+function historicoCache(){
+  const cache=lerCache();
+  return (cache.historico||[]).map(h=>({data:h.data,total:h.registros?.length||0}));
+}
+
+// ── Inicialização ─────────────────────────────────────────────
+async function iniciarCarregamento(forcar=false){
+  const ico=document.getElementById('ico');
+  ico.className='spinning';
+  const btn=document.getElementById('hd-refresh');
+  if(btn)btn.disabled=true;
+
+  const hojeStr=hoje();
+  const cache=lerCache();
+  const jaAtualizadoHoje=cache.historico?.some(h=>h.data===hojeStr);
+
+  if(jaAtualizadoHoje&&!forcar){
+    // Dados já atualizados hoje — não rebusca
+    mostrarToast('✓ Dados já atualizados hoje ('+hojeStr+'). Usando cache.');
+    ico.className='';
+    if(btn)btn.disabled=false;
+    return;
+  }
+
+  // CONAB — direto, síncrono
+  document.getElementById('ld-txt').textContent='Conectando à CONAB...';
+  await fetchConab();
+  renderFonteStatus();upd();
+
+  // CEASA/PR e Ceasa Serra em paralelo
+  document.getElementById('ld-txt').textContent='Buscando CEASA/PR e Ceasa Serra/RS...';
+  await Promise.all([fetchCeagespCap(),fetchCeasaSerra()]);
+  renderFonteStatus();upd();
+
+  // CEASA/RN — portal transparência diário
+  document.getElementById('ld-txt').textContent='Buscando CEASA/RN (Natal)...';
+  fetchCeasaRN().then(()=>{renderFonteStatus();upd();});
+
+  // CEASA/PR Curitiba — página oficial
+  document.getElementById('ld-txt').textContent='Buscando CEASA/PR (Curitiba)...';
+  fetchCeasaPRCuritiba().then(()=>{renderFonteStatus();upd();});
+
+  // Salva tudo no cache
+  salvarCache();
+  renderFonteStatus();upd();
+
+  // Mostra histórico no badge
+  const hist=historicoCache();
+  mostrarToast(`✓ Dados atualizados! ${D.length} registros · ${hist.length} dia(s) em cache`);
+
+  ico.className='';
+  if(btn)btn.disabled=false;
+}
+
+function mostrarToast(msg){
+  let t=document.getElementById('toast');
+  if(!t){
+    t=document.createElement('div');t.id='toast';
+    t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--g1);color:#fff;padding:10px 20px;border-radius:99px;font-size:13px;font-family:var(--sans);z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.25);transition:opacity .4s;pointer-events:none';
+    document.body.appendChild(t);
+  }
+  t.textContent=msg;t.style.opacity='1';
+  clearTimeout(t._tm);
+  t._tm=setTimeout(()=>{t.style.opacity='0';},4000);
+}
+
+document.addEventListener('DOMContentLoaded',async()=>{
+  // Carrega cache primeiro (dados imediatos)
+  const dtCache=carregarCache();
+  renderFonteStatus();popFiltros();upd();
+  if(dtCache) mostrarToast(`📦 Cache carregado (${dtCache}) — atualizando fontes...`);
+
+  await iniciarCarregamento();
+
+  setTimeout(()=>{
+    document.getElementById('ld').classList.add('hide');
+    setTimeout(()=>document.getElementById('ld')?.remove(),600);
+  },1500);
+});
+</script>
+</body>
+</html>
